@@ -16,6 +16,8 @@ CloseTheLoop: standalone Wear OS 5 app (Galaxy Watch 7) for voice-captured, time
 
 `ADB=~/Library/Android/sdk/platform-tools/adb` (not on PATH). No global Gradle — always use `./gradlew`.
 
+Device: Galaxy Watch 7 on **API 36** (paired once). Reconnect with `$ADB connect 192.168.0.115:<port>` — the port is on the watch's Wireless debugging screen and changes after sleep/reboot. Test exact-alarm and full-screen-intent behavior against API 36 rules.
+
 ## Toolchain (pinned — do not bump casually)
 - JDK 21 (Temurin), Gradle 8.14.3, AGP 8.13.2, Kotlin 2.2.21, KSP 2.2.21-2.0.4
 - `compileSdk 36`, `targetSdk 34`, `minSdk 30`

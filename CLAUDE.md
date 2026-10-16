@@ -6,6 +6,7 @@ Standalone Wear OS app (target: Samsung Galaxy Watch 7, Wear OS 5 / API 34). Voi
 - JDK: Temurin 21.0.7 (arm64) — `/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home`
 - Android SDK: `~/Library/Android/sdk` (platform `android-36`, build-tools 35.0.0 / 36.1.0)
 - adb: `~/Library/Android/sdk/platform-tools/adb` (not on PATH)
+- Test device: Galaxy Watch 7 `SM-L315F`, **Android 16 / API 36 (Wear OS 6)**, wireless adb at `192.168.0.115` (connect port changes when wireless debugging restarts).
 - No global Gradle — use `./gradlew` wrapper. `local.properties` holds `sdk.dir` (git-ignored).
 - Build: `./gradlew assembleDebug` → sideload: `adb connect <watch-ip>:<port>` then `adb install -r app/build/outputs/apk/debug/app-debug.apk`
 
