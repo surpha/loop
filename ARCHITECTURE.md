@@ -45,17 +45,17 @@ flowchart TD
 | Package | Contents | Status |
 |---|---|---|
 | root | `CloseTheLoopApp` (Application), `AppContainer` (manual DI), `MainActivity` | ✅ |
-| `data` | `Loop` entity, `LoopStatus`, `LoopDao`, `LoopDatabase`, `LoopRepository` | ✅ |
+| `data` | `Loop` entity, `LoopStatus`, `LoopDao`, `LoopDatabase`, `LoopRepository`, `LoopScheduler` (interface) | ✅ |
 | `parser` | `TaskParser` — text → `ParsedTask(title, deadline?)` | ✅ |
-| `domain` | `LoopProgress` (fraction, `Urgency` bands, ring selection) — pure Kotlin | ✅ |
+| `domain` | `LoopProgress` (fraction, `Urgency` bands, ring selection), `ExpiryPolicy` (alarm decisions, re-buzz, snooze options) — pure Kotlin | ✅ |
 | `voice` | `VoiceCapture` — in-app `SpeechRecognizer` (state: Idle/Listening/Heard/Failed) | ✅ |
 | `ui` | `MainScreen` (routes: listening / saved / error / dashboard), `DashboardScreen` (hero + Upcoming + Long-term + Close/Delete dialog), `LoopRings` (Canvas arcs with blur glow), `LoopColors`, `MainViewModel`, `TimeFormat` | ✅ |
-| `alarm` | `AlarmScheduler`, `AlarmReceiver`, `BootReceiver`, `ExpiredActivity`, notifications | step 6 |
+| `alarm` | `LoopAlarms` (`LoopScheduler` impl, `setAlarmClock`), `AlarmReceiver` (fire / close / snooze), `BootReceiver`, `ExpiryAlert` (full-screen notification + buzz), `ExpiredActivity` | ✅ |
 | `tile` | `LoopTileService` (ProtoLayout) | step 7 |
 | `complication` | `LoopComplicationService` (`RANGED_VALUE`) | step 8 |
 
 ## Dependency injection
-Manual. `CloseTheLoopApp.onCreate()` builds one `AppContainer`; anything with a `Context` reaches it via `context.appContainer`. Add new singletons (scheduler, parser) to `AppContainer`.
+Manual. `CloseTheLoopApp.onCreate()` builds one `AppContainer` (database, `scheduler: LoopScheduler = LoopAlarms`, `repository`); anything with a `Context` reaches it via `context.appContainer`. The repository owns scheduling: `add` arms, `snooze` cancels + re-arms, `close`/`delete` cancel (alarm + notification).
 
 ## Data model
 ```
@@ -83,7 +83,7 @@ stateDiagram-v2
     ACTIVE --> [*]: delete()
     EXPIRED --> [*]: delete()
 ```
-Long-term loops (no deadline) stay ACTIVE until closed/deleted; they never get an alarm.
+Long-term loops (no deadline) stay ACTIVE until closed/deleted; they never get an alarm. Only loops still counting down get a bezel ring; expired loops show "Time's up" in the hero but no ring.
 
 ## Dashboard layout
 - `ScalingLazyColumn` centered on the hero (item 0); rings are drawn on top as a fixed overlay so the "loop" stays on the bezel while scrolling.
@@ -92,8 +92,12 @@ Long-term loops (no deadline) stay ACTIVE until closed/deleted; they never get a
 
 ## Key flows
 - **Capture:** Mic → `VoiceCapture` (in-app `SpeechRecognizer`, default service = Google; the `RecognizerIntent` activity shows a chooser on Galaxy Watch, so it's avoided) → `TaskParser.parse(text, now, zone)` → `repository.add()` → scheduler arms alarm if deadline. `MainActivity` extra `START_VOICE=true` opens straight into listening.
-- **Expiry:** exact alarm → `AlarmReceiver` → `markExpired` → full-screen `ExpiredActivity` + ongoing notification + buzz → re-arm buzz alarm every 3 min until close/snooze.
-- **Reboot/update:** `BootReceiver` → `repository.openWithDeadline()` → re-arm all.
+- **Expiry:** `setAlarmClock` alarm (per-loop `PendingIntent`, requestCode = id) → `AlarmReceiver.ACTION_FIRE` → `ExpiryPolicy.onAlarm(loop, now)`:
+  - `Cancel` (closed/deleted/long-term) → disarm; `Wait(at)` (fired early, e.g. after snooze) → re-arm;
+  - `Buzz` → mark EXPIRED (first time), re-arm `now + 3 min`, `ExpiryAlert.show` (re-posts the full-screen notification so `ExpiredActivity` wakes the screen, plus a `USAGE_ALARM` waveform buzz).
+  - Notification actions (Close Loop / +5 / +15 / +30) go to `AlarmReceiver` → repository. `ExpiredActivity` observes its loop and finishes once it's no longer EXPIRED.
+- **Permissions:** `USE_EXACT_ALARM` (API 33+, auto-granted; `SCHEDULE_EXACT_ALARM` ≤ 32), `USE_FULL_SCREEN_INTENT` (granted on the API 36 test watch), `POST_NOTIFICATIONS` (requested on first launch), `VIBRATE`, `RECEIVE_BOOT_COMPLETED`.
+- **Reboot/update:** `BootReceiver` (`BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`) → `openWithDeadline()` → `ExpiryPolicy.rearmAt` (overdue loops re-fire after 5 s).
 - **Surfaces:** Tile + Complication read the most urgent open loop; refreshed on repository change and every minute.
 
 ## Testing

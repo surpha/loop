@@ -4,9 +4,12 @@ import kotlinx.coroutines.flow.Flow
 
 class LoopRepository(
     private val dao: LoopDao,
+    private val scheduler: LoopScheduler = LoopScheduler.None,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     fun observeOpen(): Flow<List<Loop>> = dao.observeOpen()
+
+    fun observe(id: Long): Flow<Loop?> = dao.observeById(id)
 
     suspend fun openWithDeadline(): List<Loop> = dao.getOpenWithDeadline()
 
@@ -14,7 +17,7 @@ class LoopRepository(
 
     suspend fun add(title: String, deadline: Long?): Long {
         val now = clock()
-        return dao.insert(
+        val id = dao.insert(
             Loop(
                 title = title,
                 createdAt = now,
@@ -22,11 +25,14 @@ class LoopRepository(
                 originalDurationMs = deadline?.let { it - now },
             )
         )
+        if (deadline != null) scheduler.schedule(id, deadline)
+        return id
     }
 
     suspend fun close(id: Long) {
         val loop = dao.getById(id) ?: return
         dao.update(loop.copy(status = LoopStatus.CLOSED, closedAt = clock()))
+        scheduler.cancel(id)
     }
 
     suspend fun snooze(id: Long, minutes: Int): Loop? {
@@ -39,6 +45,8 @@ class LoopRepository(
             lastSnoozedAt = now,
         )
         dao.update(snoozed)
+        scheduler.cancel(id)
+        scheduler.schedule(id, snoozed.deadline!!)
         return snoozed
     }
 
@@ -47,5 +55,8 @@ class LoopRepository(
         if (loop.status == LoopStatus.ACTIVE) dao.update(loop.copy(status = LoopStatus.EXPIRED))
     }
 
-    suspend fun delete(id: Long) = dao.delete(id)
+    suspend fun delete(id: Long) {
+        dao.delete(id)
+        scheduler.cancel(id)
+    }
 }

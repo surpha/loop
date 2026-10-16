@@ -2,6 +2,7 @@ package com.closetheloop.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import android.text.format.DateFormat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -76,6 +77,14 @@ fun MainScreen(viewModel: MainViewModel, startVoice: Boolean, onStartVoiceHandle
         if (startVoice) {
             listen()
             onStartVoiceHandled()
+        }
+    }
+    val notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
     LaunchedEffect(voiceState) {

@@ -38,7 +38,7 @@ Standalone Wear OS app (target: Samsung Galaxy Watch 7, Wear OS 5 / API 34). Voi
 
 ### 3. Dashboard layout & multiple loops
 - Short-term loop = has a deadline. Long-term = no deadline.
-- Outer bezel: **concentric rings, max 3**, for the 3 most urgent active loops (outermost = most urgent).
+- Outer bezel: **concentric rings, max 3**, for the 3 most urgent loops **still counting down** (outermost = most urgent). No time-based loop ticking → no rings at all (long-term and expired loops never get a ring).
 - Each ring's color is based on remaining fraction: **Green (>50%) → Amber (20–50%) → Red (<20%)**.
 - Center: most urgent task name + remaining time, Mic button.
 - Rotary/scroll down (`ScalingLazyColumn` / `TransformingLazyColumn`): Upcoming short-term loops (sorted by deadline) → Long-Term to-dos.

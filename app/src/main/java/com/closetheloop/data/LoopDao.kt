@@ -23,6 +23,9 @@ interface LoopDao {
     @Query("SELECT * FROM loops WHERE id = :id")
     suspend fun getById(id: Long): Loop?
 
+    @Query("SELECT * FROM loops WHERE id = :id")
+    fun observeById(id: Long): Flow<Loop?>
+
     @Insert
     suspend fun insert(loop: Loop): Long
 

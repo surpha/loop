@@ -19,17 +19,39 @@ class LoopRepositoryTest {
     private lateinit var db: LoopDatabase
     private lateinit var repo: LoopRepository
     private var now = 1_000_000L
+    private val scheduled = mutableMapOf<Long, Long>()
+    private val scheduler = object : LoopScheduler {
+        override fun schedule(loopId: Long, at: Long) { scheduled[loopId] = at }
+        override fun cancel(loopId: Long) { scheduled.remove(loopId) }
+    }
 
     @Before
     fun setUp() {
         db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), LoopDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repo = LoopRepository(db.loopDao()) { now }
+        repo = LoopRepository(db.loopDao(), scheduler) { now }
     }
 
     @After
     fun tearDown() = db.close()
+
+    @Test
+    fun schedulerFollowsLifecycle() = runTest {
+        val longTerm = repo.add("todo", null)
+        val id = repo.add("task", now + 60_000)
+        assertEquals(mapOf(id to now + 60_000), scheduled)
+
+        now += 60_000
+        repo.snooze(id, 5)
+        assertEquals(mapOf(id to now + 5 * 60_000), scheduled)
+
+        repo.close(id)
+        assertEquals(emptyMap<Long, Long>(), scheduled)
+
+        repo.delete(longTerm)
+        assertEquals(emptyMap<Long, Long>(), scheduled)
+    }
 
     @Test
     fun openLoopsSortedByDeadlineThenLongTerm() = runTest {
