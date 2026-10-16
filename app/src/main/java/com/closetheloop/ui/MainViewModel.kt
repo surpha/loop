@@ -41,6 +41,14 @@ class MainViewModel(
         _saved.value = null
     }
 
+    fun close(id: Long) {
+        viewModelScope.launch { repository.close(id) }
+    }
+
+    fun delete(id: Long) {
+        viewModelScope.launch { repository.delete(id) }
+    }
+
     companion object {
         val Factory = viewModelFactory {
             initializer {

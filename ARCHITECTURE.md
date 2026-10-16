@@ -47,8 +47,9 @@ flowchart TD
 | root | `CloseTheLoopApp` (Application), `AppContainer` (manual DI), `MainActivity` | ✅ |
 | `data` | `Loop` entity, `LoopStatus`, `LoopDao`, `LoopDatabase`, `LoopRepository` | ✅ |
 | `parser` | `TaskParser` — text → `ParsedTask(title, deadline?)` | ✅ |
+| `domain` | `LoopProgress` (fraction, `Urgency` bands, ring selection) — pure Kotlin | ✅ |
 | `voice` | `VoiceCapture` — in-app `SpeechRecognizer` (state: Idle/Listening/Heard/Failed) | ✅ |
-| `ui` | `MainViewModel`, `MainScreen` (home, listening, saved, error), `TimeFormat` | partial (dashboard rings: step 5) |
+| `ui` | `MainScreen` (routes: listening / saved / error / dashboard), `DashboardScreen` (hero + Upcoming + Long-term + Close/Delete dialog), `LoopRings` (Canvas arcs with blur glow), `LoopColors`, `MainViewModel`, `TimeFormat` | ✅ |
 | `alarm` | `AlarmScheduler`, `AlarmReceiver`, `BootReceiver`, `ExpiredActivity`, notifications | step 6 |
 | `tile` | `LoopTileService` (ProtoLayout) | step 7 |
 | `complication` | `LoopComplicationService` (`RANGED_VALUE`) | step 8 |
@@ -83,6 +84,11 @@ stateDiagram-v2
     EXPIRED --> [*]: delete()
 ```
 Long-term loops (no deadline) stay ACTIVE until closed/deleted; they never get an alarm.
+
+## Dashboard layout
+- `ScalingLazyColumn` centered on the hero (item 0); rings are drawn on top as a fixed overlay so the "loop" stays on the bezel while scrolling.
+- Content is inset by `ringsInset(n)`; TimeText and the scroll indicator are hidden while rings are visible.
+- UI clock ticks every 1s only while the activity is RESUMED (`repeatOnLifecycle`).
 
 ## Key flows
 - **Capture:** Mic → `VoiceCapture` (in-app `SpeechRecognizer`, default service = Google; the `RecognizerIntent` activity shows a chooser on Galaxy Watch, so it's avoided) → `TaskParser.parse(text, now, zone)` → `repository.add()` → scheduler arms alarm if deadline. `MainActivity` extra `START_VOICE=true` opens straight into listening.

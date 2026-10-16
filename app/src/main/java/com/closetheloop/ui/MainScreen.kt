@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -35,21 +34,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
-import androidx.wear.compose.foundation.lazy.items
-import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.wear.compose.material3.Button
-import androidx.wear.compose.material3.FilledIconButton
 import androidx.wear.compose.material3.Icon
-import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
-import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.TextButton
-import androidx.wear.compose.material3.TitleCard
 import com.closetheloop.R
-import com.closetheloop.data.Loop
 import com.closetheloop.parser.ParsedTask
 import com.closetheloop.voice.VoiceCapture
 import java.time.ZoneId
@@ -91,10 +85,13 @@ fun MainScreen(viewModel: MainViewModel, startVoice: Boolean, onStartVoiceHandle
         }
     }
 
-    val now by produceState(System.currentTimeMillis()) {
-        while (true) {
-            delay(15_000)
-            value = System.currentTimeMillis()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val now by produceState(System.currentTimeMillis(), lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                value = System.currentTimeMillis()
+                delay(1_000)
+            }
         }
     }
 
@@ -106,61 +103,14 @@ fun MainScreen(viewModel: MainViewModel, startVoice: Boolean, onStartVoiceHandle
             if (task != null) {
                 SavedScreen(task, onDone = viewModel::dismissSaved)
             } else {
-                HomeScreen(loops, now, permissionDenied, onMic = listen)
-            }
-        }
-    }
-}
-
-@Composable
-private fun HomeScreen(loops: List<Loop>, now: Long, permissionDenied: Boolean, onMic: () -> Unit) {
-    val context = LocalContext.current
-    val is24h = DateFormat.is24HourFormat(context)
-    val zone = ZoneId.systemDefault()
-    val listState = rememberScalingLazyListState()
-
-    ScreenScaffold(scrollState = listState) { contentPadding ->
-        ScalingLazyColumn(state = listState, contentPadding = contentPadding, modifier = Modifier.fillMaxSize()) {
-            item {
-                FilledIconButton(onClick = onMic, modifier = Modifier.size(72.dp)) {
-                    Icon(painterResource(R.drawable.ic_mic), contentDescription = "Add loop", modifier = Modifier.size(36.dp))
-                }
-            }
-            if (permissionDenied) {
-                item {
-                    Text(
-                        "Microphone permission needed",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            }
-            if (loops.isEmpty()) {
-                item {
-                    Text(
-                        "No open loops",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            } else {
-                item { ListHeader { Text("Open loops") } }
-                items(loops, key = { it.id }) { loop ->
-                    val deadline = loop.deadline
-                    TitleCard(
-                        onClick = {},
-                        title = { Text(loop.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                        time = { Text(if (deadline == null) "" else TimeFormat.remaining(deadline - now)) },
-                        subtitle = {
-                            Text(
-                                if (deadline == null) "Long-term" else TimeFormat.clock(deadline, now, zone, is24h),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+                DashboardScreen(
+                    loops = loops,
+                    now = now,
+                    permissionDenied = permissionDenied,
+                    onMic = listen,
+                    onClose = { viewModel.close(it.id) },
+                    onDelete = { viewModel.delete(it.id) },
+                )
             }
         }
     }
