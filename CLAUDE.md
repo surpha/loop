@@ -50,8 +50,9 @@ Standalone Wear OS app (target: Samsung Galaxy Watch 7, Wear OS 5 / API 34). Voi
 - Alarms are re-registered on `BOOT_COMPLETED` and after app update.
 
 ### 5. Data model (Room)
-`Loop(id, title, createdAt, deadline: Long?, originalDurationMs: Long?, status: ACTIVE|EXPIRED|CLOSED, snoozeCount, closedAt)`
-- Ring progress = `(deadline - now) / (deadline - createdAt-or-lastSnooze)`.
+`Loop(id, title, createdAt, deadline: Long?, originalDurationMs: Long?, status: ACTIVE|EXPIRED|CLOSED, snoozeCount, lastSnoozedAt: Long?, closedAt)`
+- Ring progress = `(deadline - now) / (deadline - windowStart)` where `windowStart = lastSnoozedAt ?: createdAt`.
+- Tests: `./gradlew testDebugUnitTest` (JVM + Robolectric, no device needed).
 
 ### 6. Tile & Complication (default chosen — user unsure, revisit after v1)
 - **Tile:** most urgent loop's ring + title + remaining time, and a Mic button that deep-links directly into voice capture. Empty state shows "No open loops" + Mic button.
