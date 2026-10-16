@@ -18,7 +18,7 @@ Standalone Wear OS app (target: Samsung Galaxy Watch 7, Wear OS 5 / API 34). Voi
 - `AlarmManager.setAlarmClock()` / exact alarms + `BroadcastReceiver` + `VibrationEffect`
 - `androidx.wear.tiles` + ProtoLayout for the Tile
 - `androidx.wear.watchface.complications.datasource` for a `RANGED_VALUE` complication
-- Speech: `RecognizerIntent.ACTION_RECOGNIZE_SPEECH` (system recognizer)
+- Speech: in-app `SpeechRecognizer` (system default service; `RecognizerIntent` activity triggers a chooser on Galaxy Watch)
 - Single package: `com.closetheloop`
 
 ## Product Decisions (locked)

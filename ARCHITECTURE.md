@@ -47,8 +47,8 @@ flowchart TD
 | root | `CloseTheLoopApp` (Application), `AppContainer` (manual DI), `MainActivity` | ✅ |
 | `data` | `Loop` entity, `LoopStatus`, `LoopDao`, `LoopDatabase`, `LoopRepository` | ✅ |
 | `parser` | `TaskParser` — text → `ParsedTask(title, deadline?)` | ✅ |
-| `voice` | `RecognizerIntent` launcher + save confirmation | step 4 |
-| `ui` | Dashboard, concentric rings, lists, theme | step 5 |
+| `voice` | `VoiceCapture` — in-app `SpeechRecognizer` (state: Idle/Listening/Heard/Failed) | ✅ |
+| `ui` | `MainViewModel`, `MainScreen` (home, listening, saved, error), `TimeFormat` | partial (dashboard rings: step 5) |
 | `alarm` | `AlarmScheduler`, `AlarmReceiver`, `BootReceiver`, `ExpiredActivity`, notifications | step 6 |
 | `tile` | `LoopTileService` (ProtoLayout) | step 7 |
 | `complication` | `LoopComplicationService` (`RANGED_VALUE`) | step 8 |
@@ -85,7 +85,7 @@ stateDiagram-v2
 Long-term loops (no deadline) stay ACTIVE until closed/deleted; they never get an alarm.
 
 ## Key flows
-- **Capture:** Mic → system speech recognizer → `TaskParser.parse(text, now, zone)` → `repository.add()` → scheduler arms alarm if deadline.
+- **Capture:** Mic → `VoiceCapture` (in-app `SpeechRecognizer`, default service = Google; the `RecognizerIntent` activity shows a chooser on Galaxy Watch, so it's avoided) → `TaskParser.parse(text, now, zone)` → `repository.add()` → scheduler arms alarm if deadline. `MainActivity` extra `START_VOICE=true` opens straight into listening.
 - **Expiry:** exact alarm → `AlarmReceiver` → `markExpired` → full-screen `ExpiredActivity` + ongoing notification + buzz → re-arm buzz alarm every 3 min until close/snooze.
 - **Reboot/update:** `BootReceiver` → `repository.openWithDeadline()` → re-arm all.
 - **Surfaces:** Tile + Complication read the most urgent open loop; refreshed on repository change and every minute.

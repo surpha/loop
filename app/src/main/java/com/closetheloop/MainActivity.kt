@@ -1,39 +1,46 @@
 package com.closetheloop
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.wear.compose.material3.AppScaffold
 import androidx.wear.compose.material3.MaterialTheme
-import androidx.wear.compose.material3.Text
+import com.closetheloop.ui.MainScreen
+import com.closetheloop.ui.MainViewModel
 
 class MainActivity : ComponentActivity() {
+    private var startVoice by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { App() }
-    }
-}
-
-@Composable
-fun App() {
-    MaterialTheme {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(text = "CloseTheLoop")
+        if (savedInstanceState == null) startVoice = intent.wantsVoice()
+        setContent {
+            MaterialTheme {
+                AppScaffold {
+                    MainScreen(
+                        viewModel = viewModel(factory = MainViewModel.Factory),
+                        startVoice = startVoice,
+                        onStartVoiceHandled = { startVoice = false },
+                    )
+                }
+            }
         }
     }
-}
 
-@Preview(device = "id:wearos_large_round", showSystemUi = true)
-@Composable
-private fun AppPreview() = App()
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.wantsVoice()) startVoice = true
+    }
+
+    private fun Intent.wantsVoice() = getBooleanExtra(EXTRA_START_VOICE, false)
+
+    companion object {
+        /** Tile/Complication deep link: open straight into voice capture. */
+        const val EXTRA_START_VOICE = "com.closetheloop.START_VOICE"
+    }
+}
