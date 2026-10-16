@@ -60,6 +60,7 @@ dependencies {
     implementation(libs.wear.tiles)
     implementation(libs.wear.protolayout)
     implementation(libs.androidx.concurrent.futures)
+    implementation(libs.wear.input)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)

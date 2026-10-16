@@ -1,6 +1,7 @@
 package com.closetheloop.ui
 
 import android.Manifest
+import android.app.RemoteInput
 import android.content.pm.PackageManager
 import android.os.Build
 import android.text.format.DateFormat
@@ -25,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,12 +41,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.wear.input.RemoteInputIntentHelper
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.TextButton
 import com.closetheloop.R
+import com.closetheloop.data.Loop
 import com.closetheloop.parser.ParsedTask
 import com.closetheloop.voice.VoiceCapture
 import java.time.ZoneId
@@ -60,6 +64,8 @@ fun MainScreen(viewModel: MainViewModel, startVoice: Boolean, onStartVoiceHandle
     val saved by viewModel.saved.collectAsStateWithLifecycle()
     val loops by viewModel.openLoops.collectAsStateWithLifecycle()
     var permissionDenied by remember { mutableStateOf(false) }
+    // Loop being edited; the next voice/keyboard result edits it instead of creating a new loop.
+    var editTarget by rememberSaveable { mutableStateOf<Long?>(null) }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         permissionDenied = !granted
@@ -89,9 +95,35 @@ fun MainScreen(viewModel: MainViewModel, startVoice: Boolean, onStartVoiceHandle
     }
     LaunchedEffect(voiceState) {
         (voiceState as? VoiceCapture.State.Heard)?.let {
-            viewModel.save(it.text)
+            val id = editTarget
+            if (id != null) viewModel.edit(id, it.text) else viewModel.save(it.text)
+            editTarget = null
             voice.reset()
         }
+    }
+
+    val keyboardLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val id = editTarget
+        editTarget = null
+        val text = result.data?.let { RemoteInput.getResultsFromIntent(it)?.getCharSequence(KEY_EDIT_TEXT) }?.toString()
+        if (id != null && !text.isNullOrBlank()) viewModel.edit(id, text)
+    }
+    val editByVoice: (Loop) -> Unit = {
+        editTarget = it.id
+        listen()
+    }
+    val editByTyping: (Loop) -> Unit = {
+        editTarget = it.id
+        val intent = RemoteInputIntentHelper.createActionRemoteInputIntent()
+        RemoteInputIntentHelper.putRemoteInputsExtra(
+            intent,
+            listOf(RemoteInput.Builder(KEY_EDIT_TEXT).setLabel(it.title).build()),
+        )
+        keyboardLauncher.launch(intent)
+    }
+    val stopVoice: () -> Unit = {
+        editTarget = null
+        voice.cancel()
     }
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -105,19 +137,28 @@ fun MainScreen(viewModel: MainViewModel, startVoice: Boolean, onStartVoiceHandle
     }
 
     when (val state = voiceState) {
-        is VoiceCapture.State.Listening -> ListeningScreen(state, onCancel = voice::cancel)
-        is VoiceCapture.State.Failed -> FailedScreen(state.message, onRetry = listen, onDismiss = voice::reset)
+        is VoiceCapture.State.Listening -> ListeningScreen(
+            state,
+            prompt = if (editTarget != null) "Say the corrected task" else "Listening…",
+            onCancel = stopVoice,
+        )
+        is VoiceCapture.State.Failed -> FailedScreen(state.message, onRetry = listen, onDismiss = stopVoice)
         else -> {
-            val task = saved
-            if (task != null) {
-                SavedScreen(task, onDone = viewModel::dismissSaved)
+            val confirmation = saved
+            if (confirmation != null) {
+                SavedScreen(confirmation.task, confirmation.edited, onDone = viewModel::dismissSaved)
             } else {
                 DashboardScreen(
                     loops = loops,
                     now = now,
                     permissionDenied = permissionDenied,
-                    onMic = listen,
+                    onMic = {
+                        editTarget = null
+                        listen()
+                    },
                     onClose = { viewModel.close(it.id) },
+                    onEditVoice = editByVoice,
+                    onEditType = editByTyping,
                     onDelete = { viewModel.delete(it.id) },
                 )
             }
@@ -125,8 +166,10 @@ fun MainScreen(viewModel: MainViewModel, startVoice: Boolean, onStartVoiceHandle
     }
 }
 
+private const val KEY_EDIT_TEXT = "edit_text"
+
 @Composable
-private fun ListeningScreen(state: VoiceCapture.State.Listening, onCancel: () -> Unit) {
+private fun ListeningScreen(state: VoiceCapture.State.Listening, prompt: String, onCancel: () -> Unit) {
     // rmsdB typically ranges from about -2 (silence) to 10 (loud).
     val level by animateFloatAsState(((state.rmsDb + 2f) / 12f).coerceIn(0f, 1f), label = "level")
     val primary = MaterialTheme.colorScheme.primary
@@ -141,7 +184,7 @@ private fun ListeningScreen(state: VoiceCapture.State.Listening, onCancel: () ->
             Icon(painterResource(R.drawable.ic_mic), contentDescription = null, tint = primary, modifier = Modifier.size(28.dp))
             Spacer(Modifier.height(8.dp))
             Text(
-                state.partial.ifBlank { "Listening…" },
+                state.partial.ifBlank { prompt },
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center,
                 maxLines = 3,
@@ -155,7 +198,7 @@ private fun ListeningScreen(state: VoiceCapture.State.Listening, onCancel: () ->
 }
 
 @Composable
-private fun SavedScreen(task: ParsedTask, onDone: () -> Unit) {
+private fun SavedScreen(task: ParsedTask, edited: Boolean, onDone: () -> Unit) {
     val context = LocalContext.current
     val now = remember { System.currentTimeMillis() }
     val deadline = task.deadline
@@ -181,7 +224,11 @@ private fun SavedScreen(task: ParsedTask, onDone: () -> Unit) {
             modifier = Modifier.padding(horizontal = 28.dp),
         ) {
             Text(
-                if (deadline != null) "Loop set" else "Added to Long-Term",
+                when {
+                    edited -> "Loop updated"
+                    deadline != null -> "Loop set"
+                    else -> "Added to Long-Term"
+                },
                 style = MaterialTheme.typography.labelMedium,
                 color = primary,
             )

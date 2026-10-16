@@ -71,6 +71,41 @@ class LoopRepositoryTest {
     }
 
     @Test
+    fun editTitleOnlyKeepsDeadlineAndAlarm() = runTest {
+        val id = repo.add("Bok flights", now + 60_000)
+        now += 10_000
+        repo.edit(id, "Book flights", null)
+
+        val loop = repo.get(id)!!
+        assertEquals("Book flights", loop.title)
+        assertEquals(now - 10_000 + 60_000, loop.deadline)
+        assertEquals(now - 10_000, loop.windowStart)
+        assertEquals(mapOf(id to loop.deadline), scheduled)
+    }
+
+    @Test
+    fun editWithNewDeadlineReactivatesAndReschedules() = runTest {
+        val id = repo.add("task", now + 60_000)
+        now += 120_000
+        repo.markExpired(id)
+        repo.edit(id, "task v2", now + 30 * 60_000)
+
+        val loop = repo.get(id)!!
+        assertEquals(LoopStatus.ACTIVE, loop.status)
+        assertEquals(now + 30 * 60_000, loop.deadline)
+        assertEquals(now, loop.windowStart)
+        assertEquals(mapOf(id to now + 30 * 60_000), scheduled)
+    }
+
+    @Test
+    fun editGivesLongTermLoopADeadline() = runTest {
+        val id = repo.add("todo", null)
+        repo.edit(id, "todo", now + 60_000)
+        assertEquals(now + 60_000, repo.get(id)!!.deadline)
+        assertEquals(mapOf(id to now + 60_000), scheduled)
+    }
+
+    @Test
     fun closeRemovesFromOpenList() = runTest {
         val id = repo.add("task", now + 60_000)
         now += 10

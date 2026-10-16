@@ -49,7 +49,7 @@ flowchart TD
 | `parser` | `TaskParser` — text → `ParsedTask(title, deadline?)` | ✅ |
 | `domain` | `LoopProgress` (fraction, `Urgency` bands, ring selection), `ExpiryPolicy` (alarm decisions, re-buzz, snooze options), `LoopSummaries.mostUrgent` (Tile/Complication content) — pure Kotlin | ✅ |
 | `voice` | `VoiceCapture` — in-app `SpeechRecognizer` (state: Idle/Listening/Heard/Failed) | ✅ |
-| `ui` | `MainScreen` (routes: listening / saved / error / dashboard), `DashboardScreen` (hero + Upcoming + Long-term + Close/Delete dialog), `LoopRings` (Canvas arcs with blur glow), `LoopColors`, `MainViewModel`, `TimeFormat` | ✅ |
+| `ui` | `MainScreen` (routes: listening / saved / error / dashboard; edit target for voice/keyboard edits), `DashboardScreen` (hero + Upcoming + Long-term + Close / Edit by voice / Edit by typing / Delete dialog), `LoopRings` (Canvas arcs with blur glow), `LoopColors`, `MainViewModel`, `TimeFormat` | ✅ |
 | `alarm` | `LoopAlarms` (`LoopScheduler` impl, `setAlarmClock`), `AlarmReceiver` (fire / close / snooze), `BootReceiver`, `ExpiryAlert` (full-screen notification + buzz), `ExpiredActivity` | ✅ |
 | `tile` | `LoopTileService` — raw ProtoLayout (Arc ring + title + remaining + Mic `LaunchAction` with `START_VOICE`) via `SuspendToFutureAdapter` | ✅ |
 | `complication` | `LoopComplicationService` (`RANGED_VALUE`) | step 8 |
@@ -92,6 +92,7 @@ Long-term loops (no deadline) stay ACTIVE until closed/deleted; they never get a
 
 ## Key flows
 - **Capture:** Mic → `VoiceCapture` (in-app `SpeechRecognizer`, default service = Google; the `RecognizerIntent` activity shows a chooser on Galaxy Watch, so it's avoided) → `TaskParser.parse(text, now, zone)` → `repository.add()` → scheduler arms alarm if deadline. `MainActivity` extra `START_VOICE=true` opens straight into listening.
+- **Edit:** loop dialog → "Edit by voice" (same `VoiceCapture`, routed via `editTarget`) or "Edit by typing" (`RemoteInputIntentHelper` → system keyboard/handwriting) → `MainViewModel.edit` re-parses. No time in the text → title only (deadline + alarm untouched); new time → `repository.edit` restarts the window (`lastSnoozedAt = now`), reactivates, and re-arms.
 - **Expiry:** `setAlarmClock` alarm (per-loop `PendingIntent`, requestCode = id) → `AlarmReceiver.ACTION_FIRE` → `ExpiryPolicy.onAlarm(loop, now)`:
   - `Cancel` (closed/deleted/long-term) → disarm; `Wait(at)` (fired early, e.g. after snooze) → re-arm;
   - `Buzz` → mark EXPIRED (first time), re-arm `now + 3 min`, `ExpiryAlert.show` (re-posts the full-screen notification so `ExpiredActivity` wakes the screen, plus a `USAGE_ALARM` waveform buzz).

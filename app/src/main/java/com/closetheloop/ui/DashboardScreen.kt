@@ -51,6 +51,8 @@ fun DashboardScreen(
     permissionDenied: Boolean,
     onMic: () -> Unit,
     onClose: (Loop) -> Unit,
+    onEditVoice: (Loop) -> Unit,
+    onEditType: (Loop) -> Unit,
     onDelete: (Loop) -> Unit,
 ) {
     val shortTerm = loops.filter { it.deadline != null }.sortedBy { it.deadline }
@@ -118,6 +120,8 @@ fun DashboardScreen(
         visible = selected != null,
         onDismiss = { selected = null },
         onClose = { selected?.let(onClose); selected = null },
+        onEditVoice = { selected?.let(onEditVoice); selected = null },
+        onEditType = { selected?.let(onEditType); selected = null },
         onDelete = { selected?.let(onDelete); selected = null },
     )
 }
@@ -236,6 +240,8 @@ private fun LoopActionsDialog(
     visible: Boolean,
     onDismiss: () -> Unit,
     onClose: () -> Unit,
+    onEditVoice: () -> Unit,
+    onEditType: () -> Unit,
     onDelete: () -> Unit,
 ) {
     AlertDialog(
@@ -250,6 +256,20 @@ private fun LoopActionsDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = LoopColors.Green),
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Close Loop") }
+        }
+        item {
+            FilledTonalButton(
+                onClick = onEditVoice,
+                icon = { Icon(painterResource(R.drawable.ic_mic), contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Edit by voice") }
+        }
+        item {
+            FilledTonalButton(
+                onClick = onEditType,
+                icon = { Icon(painterResource(R.drawable.ic_keyboard), contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Edit by typing") }
         }
         item {
             FilledTonalButton(

@@ -55,6 +55,27 @@ class LoopRepository(
         if (loop.status == LoopStatus.ACTIVE) dao.update(loop.copy(status = LoopStatus.EXPIRED))
     }
 
+    /** Renames a loop; a non-null [deadline] different from the current one also restarts its countdown. */
+    suspend fun edit(id: Long, title: String, deadline: Long?): Loop? {
+        val loop = dao.getById(id) ?: return null
+        if (deadline == null || deadline == loop.deadline) {
+            return loop.copy(title = title).also { dao.update(it) }
+        }
+        val now = clock()
+        val edited = loop.copy(
+            title = title,
+            deadline = deadline,
+            originalDurationMs = deadline - now,
+            status = LoopStatus.ACTIVE,
+            // Window restarts at the edit, so the ring starts full again.
+            lastSnoozedAt = now,
+        )
+        dao.update(edited)
+        scheduler.cancel(id)
+        scheduler.schedule(id, deadline)
+        return edited
+    }
+
     suspend fun delete(id: Long) {
         dao.delete(id)
         scheduler.cancel(id)
