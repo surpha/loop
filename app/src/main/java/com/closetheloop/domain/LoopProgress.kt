@@ -22,7 +22,7 @@ object LoopProgress {
         else -> Urgency.CRITICAL
     }
 
-    /** The most urgent short-term loops, soonest first (outermost ring). */
-    fun ringLoops(loops: List<Loop>): List<Loop> =
-        loops.filter { it.deadline != null }.sortedBy { it.deadline }.take(MAX_RINGS)
+    /** Loops still counting down, soonest first (outermost ring). Long-term and expired loops get no ring. */
+    fun ringLoops(loops: List<Loop>, now: Long): List<Loop> =
+        loops.filter { (it.deadline ?: return@filter false) > now }.sortedBy { it.deadline }.take(MAX_RINGS)
 }

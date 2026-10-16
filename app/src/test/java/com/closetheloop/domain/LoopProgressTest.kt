@@ -37,11 +37,19 @@ class LoopProgressTest {
     }
 
     @Test
-    fun ringLoopsAreThreeSoonestShortTerm() {
+    fun ringLoopsAreThreeSoonestTicking() {
         val loops = listOf(
             loop(1, 0, 500), loop(2, 0, null), loop(3, 0, 100),
-            loop(4, 0, 900), loop(5, 0, 300),
+            loop(4, 0, 900), loop(5, 0, 300), loop(6, 0, 1_000),
         )
-        assertEquals(listOf(3L, 5L, 1L), LoopProgress.ringLoops(loops).map { it.id })
+        assertEquals(listOf(3L, 5L, 1L), LoopProgress.ringLoops(loops, now = 50).map { it.id })
+        // Expired loops (3) drop off the bezel.
+        assertEquals(listOf(5L, 1L, 4L), LoopProgress.ringLoops(loops, now = 100).map { it.id })
+    }
+
+    @Test
+    fun noRingsWithoutTickingLoops() {
+        val loops = listOf(loop(1, 0, null), loop(2, 0, 100))
+        assertEquals(emptyList<Loop>(), LoopProgress.ringLoops(loops, now = 200))
     }
 }

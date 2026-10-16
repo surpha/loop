@@ -55,8 +55,8 @@ fun DashboardScreen(
 ) {
     val shortTerm = loops.filter { it.deadline != null }.sortedBy { it.deadline }
     val longTerm = loops.filter { it.deadline == null }
-    val ringLoops = LoopProgress.ringLoops(loops)
-    val hero = ringLoops.firstOrNull()
+    val ringLoops = LoopProgress.ringLoops(loops, now)
+    val hero = shortTerm.firstOrNull()
     val upcoming = shortTerm.drop(1)
     val inset = ringsInset(ringLoops.size)
 
