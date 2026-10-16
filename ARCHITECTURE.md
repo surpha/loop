@@ -47,11 +47,11 @@ flowchart TD
 | root | `CloseTheLoopApp` (Application), `AppContainer` (manual DI), `MainActivity` | ✅ |
 | `data` | `Loop` entity, `LoopStatus`, `LoopDao`, `LoopDatabase`, `LoopRepository`, `LoopScheduler` (interface) | ✅ |
 | `parser` | `TaskParser` — text → `ParsedTask(title, deadline?)` | ✅ |
-| `domain` | `LoopProgress` (fraction, `Urgency` bands, ring selection), `ExpiryPolicy` (alarm decisions, re-buzz, snooze options) — pure Kotlin | ✅ |
+| `domain` | `LoopProgress` (fraction, `Urgency` bands, ring selection), `ExpiryPolicy` (alarm decisions, re-buzz, snooze options), `LoopSummaries.mostUrgent` (Tile/Complication content) — pure Kotlin | ✅ |
 | `voice` | `VoiceCapture` — in-app `SpeechRecognizer` (state: Idle/Listening/Heard/Failed) | ✅ |
 | `ui` | `MainScreen` (routes: listening / saved / error / dashboard), `DashboardScreen` (hero + Upcoming + Long-term + Close/Delete dialog), `LoopRings` (Canvas arcs with blur glow), `LoopColors`, `MainViewModel`, `TimeFormat` | ✅ |
 | `alarm` | `LoopAlarms` (`LoopScheduler` impl, `setAlarmClock`), `AlarmReceiver` (fire / close / snooze), `BootReceiver`, `ExpiryAlert` (full-screen notification + buzz), `ExpiredActivity` | ✅ |
-| `tile` | `LoopTileService` (ProtoLayout) | step 7 |
+| `tile` | `LoopTileService` — raw ProtoLayout (Arc ring + title + remaining + Mic `LaunchAction` with `START_VOICE`) via `SuspendToFutureAdapter` | ✅ |
 | `complication` | `LoopComplicationService` (`RANGED_VALUE`) | step 8 |
 
 ## Dependency injection
@@ -98,7 +98,8 @@ Long-term loops (no deadline) stay ACTIVE until closed/deleted; they never get a
   - Notification actions (Close Loop / +5 / +15 / +30) go to `AlarmReceiver` → repository. `ExpiredActivity` observes its loop and finishes once it's no longer EXPIRED.
 - **Permissions:** `USE_EXACT_ALARM` (API 33+, auto-granted; `SCHEDULE_EXACT_ALARM` ≤ 32), `USE_FULL_SCREEN_INTENT` (granted on the API 36 test watch), `POST_NOTIFICATIONS` (requested on first launch), `VIBRATE`, `RECEIVE_BOOT_COMPLETED`.
 - **Reboot/update:** `BootReceiver` (`BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`) → `openWithDeadline()` → `ExpiryPolicy.rearmAt` (overdue loops re-fire after 5 s).
-- **Surfaces:** Tile + Complication read the most urgent open loop; refreshed on repository change and every minute.
+- **Surfaces:** Tile (+ Complication, step 8) render `LoopSummaries.mostUrgent(openLoops, now)`. `CloseTheLoopApp` collects `observeOpen()` in an app scope and calls `LoopTileService.requestUpdate` on every change; the tile also sets a 60 s freshness interval. Ring only while ticking; expired → "Time's up" in red.
+- **Tile debugging:** `$ADB shell am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation add-tile --ecn component com.closetheloop/.tile.LoopTileService`, then `... DEBUG_SYSUI --es operation show-tile --ei index 0`. Errors log under tag `TileService`.
 
 ## Testing
 | Layer | Approach | Location |

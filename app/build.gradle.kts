@@ -57,6 +57,9 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+    implementation(libs.wear.tiles)
+    implementation(libs.wear.protolayout)
+    implementation(libs.androidx.concurrent.futures)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)
