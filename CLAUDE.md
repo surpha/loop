@@ -34,6 +34,7 @@ Standalone Wear OS app (target: Samsung Galaxy Watch 7, Wear OS 5 / API 34). Voi
   - Absolute: "by 6 PM", "at 18:30", "at noon", "tonight", "tomorrow at 9"
 - **No time detected → Long-Term list** (no deadline, no ring, no alarm).
 - If a parsed absolute time is already past today → roll to tomorrow.
+- Defaults: "tonight" alone → 21:00; "tomorrow" alone → 09:00; ambiguous "at 9" → next upcoming 9:00 or 21:00; "tomorrow at 1–6" → PM.
 
 ### 3. Dashboard layout & multiple loops
 - Short-term loop = has a deadline. Long-term = no deadline.

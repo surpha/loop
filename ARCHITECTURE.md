@@ -46,7 +46,7 @@ flowchart TD
 |---|---|---|
 | root | `CloseTheLoopApp` (Application), `AppContainer` (manual DI), `MainActivity` | ✅ |
 | `data` | `Loop` entity, `LoopStatus`, `LoopDao`, `LoopDatabase`, `LoopRepository` | ✅ |
-| `parser` | `TaskParser` — text → `ParsedTask(title, deadline?)` | step 3 |
+| `parser` | `TaskParser` — text → `ParsedTask(title, deadline?)` | ✅ |
 | `voice` | `RecognizerIntent` launcher + save confirmation | step 4 |
 | `ui` | Dashboard, concentric rings, lists, theme | step 5 |
 | `alarm` | `AlarmScheduler`, `AlarmReceiver`, `BootReceiver`, `ExpiredActivity`, notifications | step 6 |
