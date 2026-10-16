@@ -32,9 +32,11 @@ Standalone Wear OS app (target: Samsung Galaxy Watch 7, Wear OS 5 / API 34). Voi
 - Local, offline regex/rule-based parser. Extracts **task name** + **deadline**.
   - Relative: "in 45 minutes", "in 2 hours", "in an hour and a half", "for 30 min"
   - Absolute: "by 6 PM", "at 18:30", "at noon", "tonight", "tomorrow at 9"
+  - Dates: "by 17th October 8pm", "on Oct 17, 2027 at 5 pm", "at 8pm on 18 Oct", "by the 25th" (next such day of month)
 - **No time detected → Long-Term list** (no deadline, no ring, no alarm).
 - If a parsed absolute time is already past today → roll to tomorrow.
 - Defaults: "tonight" alone → 21:00; "tomorrow" alone → 09:00; ambiguous "at 9" → next upcoming 9:00 or 21:00; "tomorrow at 1–6" → PM.
+- Dates: no time → 09:00; unmarked 1–6 → PM; past date without a year → next year; "the Nth" already past → next month.
 
 ### 3. Dashboard layout & multiple loops
 - Short-term loop = has a deadline. Long-term = no deadline.

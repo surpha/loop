@@ -53,6 +53,23 @@ class TaskParserTest {
     @Test fun tonightAlone() = assertParsed("Read tonight", "Read", at(2026, 10, 16, 21, 0))
     @Test fun tomorrowAlone() = assertParsed("Renew passport tomorrow", "Renew passport", at(2026, 10, 17, 9, 0))
 
+    // Calendar dates
+    @Test fun dayMonthWithTime() =
+        assertParsed("Book flight tickets by 17th October 8pm", "Book flight tickets", at(2026, 10, 17, 20, 0))
+    @Test fun monthDayAtAmbiguousMorning() =
+        assertParsed("Book flights on October 20 at 9", "Book flights", at(2026, 10, 20, 9, 0))
+    @Test fun theNthOfMonthAfternoonDefault() =
+        assertParsed("Dentist on the 3rd of November at 4", "Dentist", at(2026, 11, 3, 16, 0))
+    @Test fun dateWithoutTimeDefaultsToNine() =
+        assertParsed("Pay rent on 1st November", "Pay rent", at(2026, 11, 1, 9, 0))
+    @Test fun timeBeforeDate() = assertParsed("Call Raj at 8pm on 18 Oct", "Call Raj", at(2026, 10, 18, 20, 0))
+    @Test fun pastDateRollsToNextYear() = assertParsed("Renew visa by 5 March", "Renew visa", at(2027, 3, 5, 9, 0))
+    @Test fun explicitYear() = assertParsed("Submit by Oct 17, 2027 at 5 pm", "Submit", at(2027, 10, 17, 17, 0))
+    @Test fun ordinalOnlyThisMonth() = assertParsed("Pay card bill by the 25th", "Pay card bill", at(2026, 10, 25, 9, 0))
+    @Test fun ordinalOnlyRollsToNextMonth() = assertParsed("Water filter on the 2nd", "Water filter", at(2026, 11, 2, 9, 0))
+    @Test fun invalidDateIgnored() = assertParsed("Party on 31 November", "Party on 31 November", null)
+    @Test fun mayAsVerbIsNotADate() = assertParsed("I may call him", "I may call him", null)
+
     // No time → long-term
     @Test fun noTime() = assertParsed("Buy milk", "Buy milk", null)
     @Test fun noFalsePositiveOnIn() = assertParsed("Join a meeting", "Join a meeting", null)

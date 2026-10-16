@@ -3,6 +3,8 @@ package com.closetheloop.parser
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.Period
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -43,6 +45,28 @@ object TaskParser {
     )
     private val DAY_ONLY = Regex("""\b(tonight|tomorrow)\b""", IC)
 
+    private val MONTHS = listOf("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
+    private const val MONTH =
+        "jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?"
+    private const val DATE_PREP = """(?:(?:on|by|before|until|till|due)\s+)"""
+    private const val ORD = "(?:st|nd|rd|th)"
+
+    // "17th October", "the 3rd of Nov 2027". Groups: 1 day, 2 month, 3 year.
+    private val DATE_DAY_MONTH = Regex(
+        """\b$DATE_PREP?(?:the\s+)?(\d{1,2})$ORD?(?:\s+of)?\s+($MONTH)\b(?:,?\s+(\d{4}))?""",
+        IC,
+    )
+    // "October 17", "Oct 17th, 2027". Groups: 1 month, 2 day, 3 year.
+    private val DATE_MONTH_DAY = Regex(
+        """\b$DATE_PREP?($MONTH)\s+(?:the\s+)?(\d{1,2})$ORD?\b(?:,?\s+(\d{4}))?""",
+        IC,
+    )
+    // "by the 25th": next occurrence of that day of month. Group 1 day.
+    private val DATE_ORDINAL = Regex("""\b$DATE_PREP(?:the\s+)(\d{1,2})$ORD\b""", IC)
+
+    /** [roll] is added when the resolved time is already past (null = explicit year, never roll). */
+    private data class DateMatch(val date: LocalDate, val range: IntRange, val roll: Period?)
+
     private val LEAD_IN = Regex(
         """^(?:(?:please\s+)?remind\s+me\s+to|i\s+(?:need|have|want)\s+to|i\s+(?:should|must)|don'?t\s+forget\s+to|to)\s+""",
         IC,
@@ -58,6 +82,19 @@ object TaskParser {
             if (minutes != null && minutes > 0) {
                 return ParsedTask(title(text, m.range), now + (minutes * 60_000).toLong())
             }
+        }
+        findDate(text, nowZ.toLocalDate())?.let { d ->
+            val rest = text.replaceRange(d.range, " ")
+            var title = title(rest, null)
+            var time = at(d.date, 9, 0, zone)
+            for (regex in listOf(ABSOLUTE, ABSOLUTE_BARE)) {
+                val m = regex.find(rest) ?: continue
+                time = clockOnDate(m, d.date, zone) ?: continue
+                title = title(rest, m.range)
+                break
+            }
+            if (!time.isAfter(nowZ) && d.roll != null) time = time.plus(d.roll)
+            return ParsedTask(title, time.toInstant().toEpochMilli())
         }
         for (regex in listOf(ABSOLUTE, ABSOLUTE_BARE)) {
             regex.find(text)?.let { m ->
@@ -88,11 +125,7 @@ object TaskParser {
         val token = g[2].lowercase()
         val minute = g[3].toIntOrNull() ?: 0
         val meridiem = g[4].lowercase().firstOrNull()
-        val hour = when (token) {
-            "noon" -> 12
-            "midnight" -> 0
-            else -> token.toIntOrNull() ?: UNITS.indexOf(token)
-        }
+        val hour = hourOf(token)
         if (hour !in 0..23 || minute !in 0..59) return null
         if (meridiem != null && hour > 12) return null
 
@@ -132,6 +165,61 @@ object TaskParser {
 
     private fun at(date: LocalDate, hour: Int, minute: Int, zone: ZoneId): ZonedDateTime =
         ZonedDateTime.of(date, LocalTime.of(hour, minute), zone)
+
+    private fun hourOf(token: String): Int = when (token) {
+        "noon" -> 12
+        "midnight" -> 0
+        else -> token.toIntOrNull() ?: UNITS.indexOf(token)
+    }
+
+    private fun findDate(text: String, today: LocalDate): DateMatch? {
+        DATE_DAY_MONTH.find(text)?.let { m ->
+            val (day, month, year) = m.destructured
+            monthDate(day, month, year, m.range, today)?.let { return it }
+        }
+        DATE_MONTH_DAY.find(text)?.let { m ->
+            val (month, day, year) = m.destructured
+            monthDate(day, month, year, m.range, today)?.let { return it }
+        }
+        DATE_ORDINAL.find(text)?.let { m ->
+            val day = m.groupValues[1].toInt()
+            val thisMonth = YearMonth.from(today)
+            for (i in 0..12) {
+                val ym = thisMonth.plusMonths(i.toLong())
+                if (day !in 1..ym.lengthOfMonth()) continue
+                val date = ym.atDay(day)
+                if (!date.isBefore(today)) return DateMatch(date, m.range, Period.ofMonths(1))
+            }
+        }
+        return null
+    }
+
+    private fun monthDate(day: String, month: String, year: String, range: IntRange, today: LocalDate): DateMatch? {
+        val monthNumber = MONTHS.indexOfFirst { month.lowercase().startsWith(it) } + 1
+        val explicitYear = year.toIntOrNull()
+        val date = runCatching { LocalDate.of(explicitYear ?: today.year, monthNumber, day.toInt()) }.getOrNull()
+            ?: return null
+        if (explicitYear != null) return DateMatch(date, range, null)
+        return DateMatch(if (date.isBefore(today)) date.plusYears(1) else date, range, Period.ofYears(1))
+    }
+
+    /** A clock time on a known date: unmarked 1–6 means PM ("on the 3rd at 4"). */
+    private fun clockOnDate(m: MatchResult, date: LocalDate, zone: ZoneId): ZonedDateTime? {
+        val g = m.groupValues
+        val token = g[2].lowercase()
+        val minute = g[3].toIntOrNull() ?: 0
+        val meridiem = g[4].lowercase().firstOrNull()
+        val hour = hourOf(token)
+        if (hour !in 0..23 || minute !in 0..59 || (meridiem != null && hour > 12)) return null
+        val h = when {
+            token == "noon" || token == "midnight" -> hour
+            meridiem == 'p' -> hour % 12 + 12
+            meridiem == 'a' -> hour % 12
+            hour in 1..6 -> hour + 12
+            else -> hour
+        }
+        return at(date, h, minute, zone)
+    }
 
     private fun number(token: String): Double? {
         val t = token.lowercase().trim()
