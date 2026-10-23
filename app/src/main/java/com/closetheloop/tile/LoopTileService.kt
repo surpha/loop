@@ -83,7 +83,7 @@ class LoopTileService : TileService() {
             if (summary == null) {
                 center.addContent(text(emptyText, 15f, DIM, bold = false, maxLines = 1))
             } else {
-                val color = LoopColors.of(summary.urgency).toArgb()
+                val color = LoopColors.display(summary.loop.id, summary.urgency).toArgb()
                 // Only a loop still counting down gets a ring, matching the dashboard.
                 if (!summary.expired) {
                     root.addContent(arc(360f, color and 0x33FFFFFF))

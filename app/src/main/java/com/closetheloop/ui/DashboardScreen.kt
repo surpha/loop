@@ -1,7 +1,9 @@
 package com.closetheloop.ui
 
 import android.text.format.DateFormat
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +46,7 @@ import androidx.wear.compose.material3.TitleCard
 import com.closetheloop.R
 import com.closetheloop.data.Loop
 import com.closetheloop.domain.LoopProgress
+import com.closetheloop.domain.Urgency
 import java.time.ZoneId
 
 @Composable
@@ -110,8 +113,8 @@ fun DashboardScreen(
             }
             LoopRings(
                 rings = ringLoops.map {
-                    val f = LoopProgress.fraction(it, now)
-                    Ring(f, LoopColors.of(LoopProgress.urgency(f)))
+                    val urgency = LoopProgress.urgency(LoopProgress.fraction(it, now))
+                    Ring(LoopProgress.fraction(it, now), LoopColors.display(it.id, urgency), urgency == Urgency.CRITICAL)
                 },
                 modifier = Modifier.fillMaxSize(),
             )
@@ -168,7 +171,7 @@ private fun Hero(
                 Text(
                     if (deadline <= now) "Time's up" else TimeFormat.remaining(deadline - now),
                     style = MaterialTheme.typography.titleLarge,
-                    color = LoopColors.of(LoopProgress.urgency(fraction)),
+                    color = LoopColors.display(hero.id, LoopProgress.urgency(fraction)),
                 )
                 Text(
                     TimeFormat.clock(deadline, now, ZoneId.systemDefault(), DateFormat.is24HourFormat(context)),
@@ -222,11 +225,21 @@ private fun LoopCard(loop: Loop, now: Long, onClick: () -> Unit) {
     val deadline = loop.deadline
     TitleCard(
         onClick = onClick,
-        title = { Text(loop.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+        title = {
+            if (deadline != null) {
+                Box(
+                    Modifier
+                        .padding(top = 5.dp, end = 6.dp)
+                        .size(8.dp)
+                        .background(LoopColors.forLoop(loop.id), CircleShape)
+                )
+            }
+            Text(loop.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        },
         time = {
             if (deadline != null) {
                 val urgency = LoopProgress.urgency(LoopProgress.fraction(loop, now))
-                Text(TimeFormat.remaining(deadline - now), color = LoopColors.of(urgency))
+                Text(TimeFormat.remaining(deadline - now), color = LoopColors.display(loop.id, urgency))
             }
         },
         subtitle = {

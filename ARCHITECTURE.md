@@ -90,6 +90,7 @@ Long-term loops (no deadline) stay ACTIVE until closed/deleted; they never get a
 - No ambient/AOD mode by choice: when the screen dims the system returns to the watch face.
 - Haptics: `HapticFeedbackType.Confirm` on Close Loop (dashboard dialog and Time's-up screen).
 - `ScalingLazyColumn` centered on the hero (item 0); rings are drawn on top as a fixed overlay so the "loop" stays on the bezel while scrolling.
+- Rings: one per ticking loop (no cap). Stroke = `29dp / (1.5n − 0.5)` clamped to 1.2–7 dp, gap = stroke/2. Color = `LoopColors.forLoop(id)` (8-color palette by id); `Urgency.CRITICAL` (<20%) → red + alpha pulse (infinite transition only when a critical ring exists).
 - Content is inset by `ringsInset(n)`; TimeText and the scroll indicator are hidden while rings are visible.
 - UI clock ticks every 1s only while the activity is RESUMED (`repeatOnLifecycle`).
 
