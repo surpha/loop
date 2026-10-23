@@ -30,5 +30,9 @@ class TimeFormatTest {
         assertEquals("18:00", TimeFormat.clock(at(16, 18, 0), now, zone, true, Locale.US))
         assertEquals("Tomorrow 9:00 AM", TimeFormat.clock(at(17, 9, 0), now, zone, false, Locale.US))
         assertEquals("Sun 9:00 AM", TimeFormat.clock(at(18, 9, 0), now, zone, false, Locale.US))
+        assertEquals("23 Oct 9:00 AM", TimeFormat.clock(at(23, 9, 0), now, zone, false, Locale.US))
+        val nextYear = LocalDateTime.of(2027, 10, 17, 17, 0).atZone(zone).toInstant().toEpochMilli()
+        assertEquals("17 Oct 2027 5:00 PM", TimeFormat.clock(nextYear, now, zone, false, Locale.US))
+        assertEquals("15 Oct 9:00 AM", TimeFormat.clock(at(15, 9, 0), now, zone, false, Locale.US))
     }
 }

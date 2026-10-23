@@ -57,11 +57,11 @@ class MainViewModel(
         }
     }
 
-    /** Re-parses [text]; if it contains no time, only the title changes. */
-    fun edit(id: Long, text: String) {
+    /** Re-parses [text]; [deadline] (e.g. from a date picker) wins, otherwise if the text has no time only the title changes. */
+    fun edit(id: Long, text: String, deadline: Long? = null) {
         val parsed = TaskParser.parse(text, clock(), zone())
         viewModelScope.launch {
-            val loop = repository.edit(id, parsed.title, parsed.deadline) ?: return@launch
+            val loop = repository.edit(id, parsed.title, deadline ?: parsed.deadline) ?: return@launch
             _saved.value = Confirmation(ParsedTask(loop.title, loop.deadline), edited = true)
         }
     }

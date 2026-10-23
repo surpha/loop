@@ -21,15 +21,19 @@ object TimeFormat {
         }
     }
 
-    /** "6:00 PM", "Tomorrow 9:00 AM", "Sun 9:00 AM". */
+    /** "6:00 PM", "Tomorrow 9:00 AM", "Sun 9:00 AM" (within a week), "18 Nov 9:00 AM", "17 Oct 2027 5:00 PM". */
     fun clock(deadline: Long, now: Long, zone: ZoneId, is24h: Boolean, locale: Locale = Locale.getDefault()): String {
         val t = Instant.ofEpochMilli(deadline).atZone(zone)
         val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+        val date = t.toLocalDate()
         val time = t.format(DateTimeFormatter.ofPattern(if (is24h) "HH:mm" else "h:mm a", locale))
-        return when (t.toLocalDate()) {
-            today -> time
-            today.plusDays(1) -> "Tomorrow $time"
-            else -> "${t.format(DateTimeFormatter.ofPattern("EEE", locale))} $time"
+        val day = when {
+            date == today -> return time
+            date == today.plusDays(1) -> "Tomorrow"
+            date.isAfter(today) && date.isBefore(today.plusDays(7)) -> t.format(DateTimeFormatter.ofPattern("EEE", locale))
+            date.year == today.year -> t.format(DateTimeFormatter.ofPattern("d MMM", locale))
+            else -> t.format(DateTimeFormatter.ofPattern("d MMM yyyy", locale))
         }
+        return "$day $time"
     }
 }

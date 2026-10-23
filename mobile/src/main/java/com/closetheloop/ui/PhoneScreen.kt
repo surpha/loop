@@ -266,9 +266,11 @@ fun PhoneScreen(viewModel: MainViewModel) {
     editing?.let { loop ->
         EditDialog(
             loop = loop,
+            now = now,
+            is24h = is24h,
             onDismiss = { editing = null },
-            onSave = { text ->
-                viewModel.edit(loop.id, text)
+            onSave = { text, deadline ->
+                viewModel.edit(loop.id, text, deadline)
                 editing = null
             },
         )
@@ -534,9 +536,11 @@ private fun Composer(
 ) {
     val zone = ZoneId.systemDefault()
     var chip by rememberSaveable { mutableStateOf<QuickTime?>(null) }
+    var custom by rememberSaveable { mutableStateOf<Long?>(null) }
+    var picking by remember { mutableStateOf(false) }
     val parsed = remember(text, now / 60_000) { TaskParser.parse(text.trim(), now, zone) }
-    // A chip overrides any time typed in the text.
-    val deadline = chip?.deadline(now, zone) ?: parsed.deadline.takeIf { chip == null }
+    // Precedence: picked date & time > quick chip > time typed in the text.
+    val deadline = custom ?: chip?.deadline(now, zone) ?: parsed.deadline.takeIf { chip == null }
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
 
@@ -569,8 +573,11 @@ private fun Composer(
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 QuickTime.entries.forEach { option ->
                     FilterChip(
-                        selected = chip == option,
-                        onClick = { chip = if (chip == option) null else option },
+                        selected = chip == option && custom == null,
+                        onClick = {
+                            custom = null
+                            chip = if (chip == option) null else option
+                        },
                         label = { Text(option.label) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -578,6 +585,18 @@ private fun Composer(
                         ),
                     )
                 }
+                val picked = custom
+                FilterChip(
+                    selected = picked != null,
+                    onClick = { picking = true },
+                    label = {
+                        Text(if (picked == null) "📅 Pick date & time" else "📅 ${TimeFormat.clock(picked, now, zone, is24h)}")
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
+                )
             }
 
             Button(
@@ -586,6 +605,20 @@ private fun Composer(
                 modifier = Modifier.fillMaxWidth().height(52.dp),
             ) { Text("Add loop", fontWeight = FontWeight.SemiBold) }
         }
+    }
+
+    if (picking) {
+        DateTimePickerFlow(
+            initial = deadline,
+            now = now,
+            is24h = is24h,
+            onPicked = {
+                custom = it
+                chip = null
+                picking = false
+            },
+            onDismiss = { picking = false },
+        )
     }
 }
 
@@ -669,23 +702,43 @@ private fun LoopActions(
 }
 
 @Composable
-private fun EditDialog(loop: Loop, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+private fun EditDialog(loop: Loop, now: Long, is24h: Boolean, onDismiss: () -> Unit, onSave: (String, Long?) -> Unit) {
     var text by rememberSaveable(loop.id) { mutableStateOf(loop.title) }
+    var picked by rememberSaveable(loop.id) { mutableStateOf<Long?>(null) }
+    var picking by remember { mutableStateOf(false) }
+    val shown = picked ?: loop.deadline
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Edit loop") },
         text = {
             Column {
                 OutlinedTextField(value = text, onValueChange = { text = it })
+                TextButton(onClick = { picking = true }, modifier = Modifier.padding(top = 4.dp)) {
+                    Text(
+                        if (shown == null) "📅 Add date & time"
+                        else "📅 ${TimeFormat.clock(shown, now, ZoneId.systemDefault(), is24h)} · change"
+                    )
+                }
                 Text(
-                    "Add a time (e.g. \"by 6pm\") to change the deadline; otherwise only the title changes.",
+                    "Or type a time (e.g. \"by 6pm\"); with neither, only the title changes.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp),
                 )
             }
         },
-        confirmButton = { TextButton(onClick = { if (text.isNotBlank()) onSave(text.trim()) }) { Text("Save") } },
+        confirmButton = { TextButton(onClick = { if (text.isNotBlank()) onSave(text.trim(), picked) }) { Text("Save") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+    if (picking) {
+        DateTimePickerFlow(
+            initial = shown,
+            now = now,
+            is24h = is24h,
+            onPicked = {
+                picked = it
+                picking = false
+            },
+            onDismiss = { picking = false },
+        )
+    }
 }
