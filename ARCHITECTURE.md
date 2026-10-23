@@ -41,18 +41,21 @@ flowchart TD
     Boot --> Sched
 ```
 
-## Packages (`com.closetheloop`)
-| Package | Contents | Status |
-|---|---|---|
-| root | `CloseTheLoopApp` (Application), `AppContainer` (manual DI), `MainActivity` | ✅ |
-| `data` | `Loop` entity, `LoopStatus`, `LoopDao`, `LoopDatabase`, `LoopRepository`, `LoopScheduler` (interface) | ✅ |
-| `parser` | `TaskParser` — text → `ParsedTask(title, deadline?)` | ✅ |
-| `domain` | `LoopProgress` (fraction, `Urgency` bands, ring selection), `ExpiryPolicy` (alarm decisions, re-buzz, snooze options), `LoopSummaries.mostUrgent` (Tile/Complication content) — pure Kotlin | ✅ |
-| `voice` | `VoiceCapture` — in-app `SpeechRecognizer` (state: Idle/Listening/Heard/Failed) | ✅ |
-| `ui` | `MainScreen` (routes: listening / saved / error / dashboard; edit target for voice/keyboard edits), `DashboardScreen` (hero + Upcoming + Long-term + Close / Edit by voice / Edit by typing / Delete dialog), `LoopRings` (Canvas arcs with blur glow), `LoopColors`, `MainViewModel`, `TimeFormat` | ✅ |
-| `alarm` | `LoopAlarms` (`LoopScheduler` impl, `setAlarmClock`), `AlarmReceiver` (fire / close / snooze), `BootReceiver`, `ExpiryAlert` (full-screen notification + buzz), `ExpiredActivity` | ✅ |
-| `tile` | `LoopTileService` — raw ProtoLayout (Arc ring + title + remaining + Mic `LaunchAction` with `START_VOICE`) via `SuspendToFutureAdapter` | ✅ |
-| `complication` | `LoopComplicationService` (`RANGED_VALUE`) | step 8 |
+## Modules & packages (`com.closetheloop`)
+`:shared` (Android library) holds everything platform-neutral; `:wear` (watch app) and the upcoming `:mobile` (phone app) depend on it. Both apps keep `applicationId = com.closetheloop`.
+
+| Module | Package | Contents | Status |
+|---|---|---|---|
+| `:wear` | root | `CloseTheLoopApp` (Application), `AppContainer` (manual DI), `MainActivity` | ✅ |
+| `:shared` | `data` | `Loop` entity, `LoopStatus`, `LoopDao`, `LoopDatabase`, `LoopRepository`, `LoopScheduler` (interface) | ✅ |
+| `:shared` | `parser` | `TaskParser` — text → `ParsedTask(title, deadline?)` | ✅ |
+| `:shared` | `domain` | `LoopProgress` (fraction, `Urgency` bands, ring selection), `ExpiryPolicy` (alarm decisions, re-buzz, snooze options), `LoopSummaries.mostUrgent` (Tile/Complication content) — pure Kotlin | ✅ |
+| `:shared` | `ui` | `TimeFormat` (remaining / clock strings) | ✅ |
+| `:wear` | `voice` | `VoiceCapture` — in-app `SpeechRecognizer` (state: Idle/Listening/Heard/Failed) | ✅ |
+| `:wear` | `ui` | `MainScreen` (routes: listening / saved / error / dashboard; edit target for voice/keyboard edits), `DashboardScreen` (hero + Upcoming + Long-term + Close / Edit by voice / Edit by typing / Delete dialog), `LoopRings` (Canvas arcs with blur glow), `LoopColors`, `MainViewModel`, `Theme` | ✅ |
+| `:wear` | `alarm` | `LoopAlarms` (`LoopScheduler` impl, `setAlarmClock`), `AlarmReceiver` (fire / close / snooze), `BootReceiver`, `ExpiryAlert` (full-screen notification + buzz), `ExpiredActivity` | ✅ |
+| `:wear` | `tile` | `LoopTileService` — raw ProtoLayout (Arc ring + title + remaining + Mic `LaunchAction` with `START_VOICE`) via `SuspendToFutureAdapter` | ✅ |
+| `:wear` | `complication` | `LoopComplicationService` (`RANGED_VALUE`) | deferred |
 
 ## Dependency injection
 Manual. `CloseTheLoopApp.onCreate()` builds one `AppContainer` (database, `scheduler: LoopScheduler = LoopAlarms`, `repository`); anything with a `Context` reaches it via `context.appContainer`. The repository owns scheduling: `add` arms, `snooze` cancels + re-arms, `close`/`delete` cancel (alarm + notification).
@@ -109,11 +112,12 @@ Long-term loops (no deadline) stay ACTIVE until closed/deleted; they never get a
 ## Testing
 | Layer | Approach | Location |
 |---|---|---|
-| Data | Robolectric (SDK 34) + in-memory Room, fake clock | `app/src/test/.../data` |
-| Parser / progress | Plain JUnit, fixed clock + `ZoneId` | `app/src/test/...` |
+| Data | Robolectric (SDK 34) + in-memory Room, fake clock | `shared/src/test/.../data` |
+| Parser / progress | Plain JUnit, fixed clock + `ZoneId` | `shared/src/test/...` |
 | UI, alarms, tile, complication | Manual on Galaxy Watch 7 via wireless adb | — |
 
 ## Build config
 - [gradle/libs.versions.toml](gradle/libs.versions.toml) — all versions
-- [app/build.gradle.kts](app/build.gradle.kts) — Android config, KSP (Room), test options
+- [shared/build.gradle.kts](shared/build.gradle.kts) — Android library: Room (KSP, exposed as `api`), parser, domain, tests
+- [wear/build.gradle.kts](wear/build.gradle.kts) — watch app: Compose for Wear, Tiles, wear-input; depends on `:shared`
 - Manifest: `uses-feature android.hardware.type.watch`, `com.google.android.wearable.standalone=true`

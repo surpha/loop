@@ -23,7 +23,7 @@ sdk.dir=/Users/<you>/Library/Android/sdk
 ## Build & test
 ```sh
 ./gradlew testDebugUnitTest   # JVM + Robolectric unit tests, no device needed
-./gradlew assembleDebug       # → app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleDebug       # → wear/build/outputs/apk/debug/wear-debug.apk
 ```
 
 ## Sideload onto the watch
@@ -37,7 +37,7 @@ sdk.dir=/Users/<you>/Library/Android/sdk
 4. Connect (the port is on the main Wireless debugging screen and changes after sleep/reboot):
    ```sh
    $ADB connect <ip>:<port>
-   ./gradlew installDebug
+   ANDROID_SERIAL=<ip>:<port> ./gradlew :wear:installDebug
    $ADB shell am start -n com.closetheloop/.MainActivity
    ```
    If the first install after reconnecting fails, just run it again.

@@ -3,14 +3,14 @@
 Read this first, then [CLAUDE.md](CLAUDE.md) (product spec) and [ARCHITECTURE.md](ARCHITECTURE.md) (code structure).
 
 ## Project
-CloseTheLoop: standalone Wear OS 5 app (Galaxy Watch 7) for voice-captured, time-boxed tasks ("loops"). Package `com.closetheloop`, single `:app` module.
+CloseTheLoop: Wear OS app (Galaxy Watch 7) for voice-captured, time-boxed tasks ("loops"), with an Android phone companion in progress. Package `com.closetheloop`. Modules: `:shared` (Room data, parser, domain, time formatting — all unit tests live here), `:wear` (watch app), `:mobile` (phone app, upcoming).
 
 ## Commands
 | Task | Command |
 |---|---|
 | Build APK | `./gradlew assembleDebug` |
 | Unit tests (JVM + Robolectric) | `./gradlew testDebugUnitTest` |
-| Install on connected watch | `./gradlew installDebug` |
+| Install on the watch only | `ANDROID_SERIAL=<watch-ip:port> ./gradlew :wear:installDebug` |
 | Launch on watch | `$ADB shell am start -n com.closetheloop/.MainActivity` |
 | Logs | `$ADB logcat --pid=$($ADB shell pidof com.closetheloop)` |
 

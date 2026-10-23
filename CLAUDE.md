@@ -8,7 +8,7 @@ Standalone Wear OS app (target: Samsung Galaxy Watch 7, Wear OS 5 / API 34). Voi
 - adb: `~/Library/Android/sdk/platform-tools/adb` (not on PATH)
 - Test device: Galaxy Watch 7 `SM-L315F`, **Android 16 / API 36 (Wear OS 6)**, wireless adb at `192.168.0.115` (connect port changes when wireless debugging restarts).
 - No global Gradle — use `./gradlew` wrapper. `local.properties` holds `sdk.dir` (git-ignored).
-- Build: `./gradlew assembleDebug` → sideload: `adb connect <watch-ip>:<port>` then `adb install -r app/build/outputs/apk/debug/app-debug.apk`
+- Build: `./gradlew assembleDebug` → sideload: `adb connect <watch-ip>:<port>` then `adb install -r wear/build/outputs/apk/debug/wear-debug.apk`
 
 ## Tech Stack
 - Kotlin 2.0+, Compose compiler plugin, AGP 8.x, Gradle version catalog
@@ -19,7 +19,7 @@ Standalone Wear OS app (target: Samsung Galaxy Watch 7, Wear OS 5 / API 34). Voi
 - `androidx.wear.tiles` + ProtoLayout for the Tile
 - `androidx.wear.watchface.complications.datasource` for a `RANGED_VALUE` complication
 - Speech: in-app `SpeechRecognizer` (system default service; `RecognizerIntent` activity triggers a chooser on Galaxy Watch)
-- Single package: `com.closetheloop`
+- Package / applicationId: `com.closetheloop`. Modules: `:shared` (data, parser, domain), `:wear`, `:mobile` (phone companion, in progress)
 
 ## Product Decisions (locked)
 
