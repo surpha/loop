@@ -52,12 +52,14 @@ flowchart TD
 | `:shared` | `domain` | `LoopProgress` (fraction, `Urgency` bands, ring selection), `ExpiryPolicy` (alarm decisions, re-buzz, snooze options), `LoopSummaries.mostUrgent` (Tile/Complication content) — pure Kotlin | ✅ |
 | `:shared` | `ui` | `TimeFormat`, `LoopRings` + `LoopColors` (Compose Canvas rings, per-task palette), `MainViewModel` (+ `Factory` via `LoopApp`) | ✅ |
 | `:shared` | `voice` | `VoiceCapture` — in-app `SpeechRecognizer` (state: Idle/Listening/Heard/Failed) | ✅ |
-| `:shared` | root | `LoopApp` — interface each Application implements to expose its `LoopRepository` | ✅ |
+| `:shared` | root | `LoopApp` — interface each Application implements: `repository`, `scheduler`, `expiredScreenIntent(loopId)` | ✅ |
 | `:shared` | `domain` | `QuickTime` presets (15 min … Tomorrow / No time) resolved via `TaskParser` | ✅ |
 | `:wear` | `ui` | `MainScreen` (routes: listening / saved / error / dashboard; edit target for voice/keyboard edits), `DashboardScreen` (hero + Upcoming + Long-term + Close / Edit by voice / Edit by typing / Delete dialog), `Theme` | ✅ |
-| `:mobile` | root | `CloseTheLoopPhoneApp` (`LoopApp`, local Room DB, no alarms yet), `MainActivity` (edge-to-edge) | ✅ |
+| `:mobile` | root | `CloseTheLoopPhoneApp` (`LoopApp`, local Room DB, `LoopAlarms`), `MainActivity` (edge-to-edge) | ✅ |
+| `:mobile` | `ui` | `PhoneExpiredActivity` (M3 Time's-up screen over lock screen: pulsing red ring, Close Loop, +5/15/30) | ✅ |
 | `:mobile` | `ui` | `PhoneTheme` (always-dark M3, loop-green), `PhoneScreen`: header (date, "✓ N closed today"), ring hero, Time's up / Upcoming / Long-term cards with progress bars, swipe-right to close + Undo, add bar (composer + instant Mic), composer sheet with live parse preview + `QuickTime` chips + dictate-into-field, actions sheet (Close / +5/15/30 / Edit / Delete) | ✅ |
-| `:wear` | `alarm` | `LoopAlarms` (`LoopScheduler` impl, `setAlarmClock`), `AlarmReceiver` (fire / close / snooze), `BootReceiver`, `ExpiryAlert` (full-screen notification + buzz), `ExpiredActivity` | ✅ |
+| `:shared` | `alarm` | `LoopAlarms` (`LoopScheduler` impl, `setAlarmClock`), `AlarmReceiver` (fire / close / snooze), `BootReceiver`, `ExpiryAlert` (full-screen notification + buzz) — declared in the shared manifest, merged into both apps; reach app services via `context.loopApp` | ✅ |
+| `:wear` | `alarm` | `ExpiredActivity` (wear Compose Time's-up screen) | ✅ |
 | `:wear` | `tile` | `LoopTileService` — raw ProtoLayout (Arc ring + title + remaining + Mic `LaunchAction` with `START_VOICE`) via `SuspendToFutureAdapter` | ✅ |
 | `:wear` | `complication` | `LoopComplicationService` (`RANGED_VALUE`) | deferred |
 

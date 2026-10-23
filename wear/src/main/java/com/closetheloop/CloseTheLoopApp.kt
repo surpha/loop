@@ -2,6 +2,8 @@ package com.closetheloop
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
+import com.closetheloop.alarm.ExpiredActivity
 import com.closetheloop.alarm.LoopAlarms
 import com.closetheloop.data.LoopDatabase
 import com.closetheloop.data.LoopRepository
@@ -24,6 +26,9 @@ class CloseTheLoopApp : Application(), LoopApp {
         private set
 
     override val repository: LoopRepository get() = container.repository
+    override val scheduler: LoopScheduler get() = container.scheduler
+
+    override fun expiredScreenIntent(context: Context, loopId: Long): Intent = ExpiredActivity.intent(context, loopId)
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 

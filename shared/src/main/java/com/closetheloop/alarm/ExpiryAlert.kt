@@ -12,7 +12,8 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
-import com.closetheloop.R
+import com.closetheloop.loopApp
+import com.closetheloop.shared.R
 import com.closetheloop.data.Loop
 import com.closetheloop.domain.ExpiryPolicy
 
@@ -27,7 +28,7 @@ object ExpiryAlert {
         ensureChannel(nm)
         val id = loop.id.toInt()
         val open = PendingIntent.getActivity(
-            context, id, ExpiredActivity.intent(context, loop.id),
+            context, id, context.loopApp.expiredScreenIntent(context, loop.id),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)

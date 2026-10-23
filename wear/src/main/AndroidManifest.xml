@@ -5,14 +5,6 @@
     <uses-feature android:name="android.hardware.microphone" />
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-    <uses-permission
-        android:name="android.permission.SCHEDULE_EXACT_ALARM"
-        android:maxSdkVersion="32" />
 
     <queries>
         <intent>
@@ -51,10 +43,6 @@
             android:taskAffinity="com.closetheloop.expired"
             android:turnScreenOn="true" />
 
-        <receiver
-            android:name=".alarm.AlarmReceiver"
-            android:exported="false" />
-
         <service
             android:name=".tile.LoopTileService"
             android:exported="true"
@@ -67,14 +55,5 @@
                 android:name="androidx.wear.tiles.PREVIEW"
                 android:resource="@drawable/ic_launcher" />
         </service>
-
-        <receiver
-            android:name=".alarm.BootReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-            </intent-filter>
-        </receiver>
     </application>
 </manifest>

@@ -5,7 +5,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import com.closetheloop.MainActivity
 import com.closetheloop.data.LoopScheduler
 
 /** Exact expiry alarms via setAlarmClock (fires in Doze, wakes the device). */
@@ -19,9 +18,8 @@ class LoopAlarms(context: Context) : LoopScheduler {
             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, operation)
             return
         }
-        val show = PendingIntent.getActivity(
-            context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
-        )
+        val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: Intent()
+        val show = PendingIntent.getActivity(context, 0, launch, PendingIntent.FLAG_IMMUTABLE)
         alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(at, show), operation)
     }
 

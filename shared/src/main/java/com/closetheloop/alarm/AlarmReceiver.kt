@@ -3,7 +3,7 @@ package com.closetheloop.alarm
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.closetheloop.appContainer
+import com.closetheloop.loopApp
 import com.closetheloop.domain.ExpiryPolicy
 import com.closetheloop.domain.ExpiryPolicy.Decision
 import kotlinx.coroutines.CoroutineScope
@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val loopId = intent.getLongExtra(EXTRA_LOOP_ID, -1L).takeIf { it >= 0 } ?: return
-        val container = context.appContainer
+        val container = context.loopApp
         val repository = container.repository
 
         launchAsync {
