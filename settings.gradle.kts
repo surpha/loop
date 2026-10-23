@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "CloseTheLoop"
-include(":shared", ":wear")
+include(":shared", ":wear", ":mobile")

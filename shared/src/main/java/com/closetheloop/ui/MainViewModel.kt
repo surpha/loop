@@ -5,11 +5,12 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.closetheloop.CloseTheLoopApp
+import com.closetheloop.LoopApp
 import com.closetheloop.data.Loop
 import com.closetheloop.data.LoopRepository
 import com.closetheloop.parser.ParsedTask
 import com.closetheloop.parser.TaskParser
+import java.time.Instant
 import java.time.ZoneId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,6 +31,23 @@ class MainViewModel(
 
     private val _saved = MutableStateFlow<Confirmation?>(null)
     val saved: StateFlow<Confirmation?> = _saved.asStateFlow()
+
+    private val startOfToday: Long =
+        Instant.ofEpochMilli(clock()).atZone(zone()).toLocalDate().atStartOfDay(zone()).toInstant().toEpochMilli()
+    val closedToday: StateFlow<Int> = repository.observeClosedSince(startOfToday)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    /** Add with an already-resolved deadline (e.g. a quick-time chip on the phone). */
+    fun add(title: String, deadline: Long?) {
+        viewModelScope.launch {
+            repository.add(title, deadline)
+            _saved.value = Confirmation(ParsedTask(title, deadline), edited = false)
+        }
+    }
+
+    fun reopen(id: Long) {
+        viewModelScope.launch { repository.reopen(id) }
+    }
 
     fun save(spoken: String) {
         val task = TaskParser.parse(spoken, clock(), zone())
@@ -56,6 +74,10 @@ class MainViewModel(
         viewModelScope.launch { repository.close(id) }
     }
 
+    fun snooze(id: Long, minutes: Int) {
+        viewModelScope.launch { repository.snooze(id, minutes) }
+    }
+
     fun delete(id: Long) {
         viewModelScope.launch { repository.delete(id) }
     }
@@ -63,8 +85,8 @@ class MainViewModel(
     companion object {
         val Factory = viewModelFactory {
             initializer {
-                val app = this[APPLICATION_KEY] as CloseTheLoopApp
-                MainViewModel(app.container.repository, System::currentTimeMillis, ZoneId::systemDefault)
+                val app = this[APPLICATION_KEY] as LoopApp
+                MainViewModel(app.repository, System::currentTimeMillis, ZoneId::systemDefault)
             }
         }
     }

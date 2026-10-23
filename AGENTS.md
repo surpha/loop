@@ -11,6 +11,7 @@ CloseTheLoop: Wear OS app (Galaxy Watch 7) for voice-captured, time-boxed tasks 
 | Build APK | `./gradlew assembleDebug` |
 | Unit tests (JVM + Robolectric) | `./gradlew testDebugUnitTest` |
 | Install on the watch only | `ANDROID_SERIAL=<watch-ip:port> ./gradlew :wear:installDebug` |
+| Install on the phone only | `ANDROID_SERIAL=<phone-serial> ./gradlew :mobile:installDebug` |
 | Launch on watch | `$ADB shell am start -n com.closetheloop/.MainActivity` |
 | Logs | `$ADB logcat --pid=$($ADB shell pidof com.closetheloop)` |
 

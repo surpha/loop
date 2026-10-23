@@ -1,5 +1,6 @@
 package com.closetheloop.data
 
+import com.closetheloop.domain.ExpiryPolicy
 import kotlinx.coroutines.flow.Flow
 
 class LoopRepository(
@@ -10,6 +11,8 @@ class LoopRepository(
     fun observeOpen(): Flow<List<Loop>> = dao.observeOpen()
 
     fun observe(id: Long): Flow<Loop?> = dao.observeById(id)
+
+    fun observeClosedSince(since: Long): Flow<Int> = dao.observeClosedSince(since)
 
     suspend fun openWithDeadline(): List<Loop> = dao.getOpenWithDeadline()
 
@@ -48,6 +51,18 @@ class LoopRepository(
         scheduler.cancel(id)
         scheduler.schedule(id, snoozed.deadline!!)
         return snoozed
+    }
+
+    /** Undo a close: back to ACTIVE (or EXPIRED if its deadline already passed) and re-armed. */
+    suspend fun reopen(id: Long) {
+        val loop = dao.getById(id) ?: return
+        if (loop.status != LoopStatus.CLOSED) return
+        val now = clock()
+        val deadline = loop.deadline
+        val status = if (deadline != null && deadline <= now) LoopStatus.EXPIRED else LoopStatus.ACTIVE
+        val reopened = loop.copy(status = status, closedAt = null)
+        dao.update(reopened)
+        ExpiryPolicy.rearmAt(reopened, now)?.let { scheduler.schedule(id, it) }
     }
 
     suspend fun markExpired(id: Long) {

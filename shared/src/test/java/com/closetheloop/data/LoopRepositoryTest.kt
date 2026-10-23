@@ -106,6 +106,40 @@ class LoopRepositoryTest {
     }
 
     @Test
+    fun reopenRestoresActiveLoopAndAlarm() = runTest {
+        val id = repo.add("task", now + 60_000)
+        repo.close(id)
+        repo.reopen(id)
+
+        val loop = repo.get(id)!!
+        assertEquals(LoopStatus.ACTIVE, loop.status)
+        assertNull(loop.closedAt)
+        assertEquals(mapOf(id to now + 60_000), scheduled)
+    }
+
+    @Test
+    fun reopenPastDeadlineIsExpired() = runTest {
+        val id = repo.add("task", now + 60_000)
+        repo.close(id)
+        now += 120_000
+        repo.reopen(id)
+        assertEquals(LoopStatus.EXPIRED, repo.get(id)!!.status)
+    }
+
+    @Test
+    fun closedSinceCountsOnlyRecentCloses() = runTest {
+        val a = repo.add("a", null)
+        val b = repo.add("b", null)
+        repo.add("c", null)
+        repo.close(a)
+        now += 1_000
+        val since = now
+        repo.close(b)
+        assertEquals(1, repo.observeClosedSince(since).first())
+        assertEquals(2, repo.observeClosedSince(0).first())
+    }
+
+    @Test
     fun closeRemovesFromOpenList() = runTest {
         val id = repo.add("task", now + 60_000)
         now += 10

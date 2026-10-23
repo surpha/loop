@@ -19,9 +19,11 @@ class AppContainer(context: Context) {
     val repository = LoopRepository(database.loopDao(), scheduler)
 }
 
-class CloseTheLoopApp : Application() {
+class CloseTheLoopApp : Application(), LoopApp {
     lateinit var container: AppContainer
         private set
+
+    override val repository: LoopRepository get() = container.repository
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
