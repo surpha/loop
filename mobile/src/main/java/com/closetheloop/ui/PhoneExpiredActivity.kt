@@ -11,7 +11,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +25,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -109,12 +109,13 @@ private fun ExpiredScreen(loop: Loop, onClose: () -> Unit, onSnooze: (Int) -> Un
     )
     val overdueMs = System.currentTimeMillis() - (loop.deadline ?: 0L)
 
+    // Surface provides onBackground as the content color; without it Text defaults to black.
+    Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .systemBarsPadding()
             .padding(24.dp),
     ) {
@@ -154,5 +155,6 @@ private fun ExpiredScreen(loop: Loop, onClose: () -> Unit, onSnooze: (Int) -> Un
                 }
             }
         }
+    }
     }
 }
