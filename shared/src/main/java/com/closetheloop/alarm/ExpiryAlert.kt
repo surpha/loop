@@ -14,6 +14,8 @@ import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import com.closetheloop.loopApp
 import com.closetheloop.shared.R
+import com.closetheloop.ui.LoopColors
+import androidx.compose.ui.graphics.toArgb
 import com.closetheloop.data.Loop
 import com.closetheloop.domain.ExpiryPolicy
 
@@ -38,6 +40,9 @@ object ExpiryAlert {
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setOngoing(true)
+            // Each device alerts on its own; don't let the phone's alert bridge to the watch as a second buzz.
+            .setLocalOnly(true)
+            .setColor(LoopColors.Red.toArgb())
             .setContentIntent(open)
             .setFullScreenIntent(open, true)
             .addAction(0, "Close Loop", action(context, loop.id, AlarmReceiver.ACTION_CLOSE, 0))

@@ -6,6 +6,8 @@
         android:required="false" />
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Android 16 Live Updates: pinned countdown in the status bar / lock screen. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
 
     <queries>
         <intent>
