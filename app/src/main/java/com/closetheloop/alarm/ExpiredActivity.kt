@@ -26,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,6 +50,7 @@ import com.closetheloop.data.Loop
 import com.closetheloop.data.LoopStatus
 import com.closetheloop.domain.ExpiryPolicy
 import com.closetheloop.ui.LoopColors
+import com.closetheloop.ui.LoopTheme
 import com.closetheloop.ui.TimeFormat
 import kotlinx.coroutines.launch
 
@@ -63,9 +66,10 @@ class ExpiredActivity : ComponentActivity() {
         val repository = appContainer.repository
 
         setContent {
-            MaterialTheme {
+            LoopTheme {
                 AppScaffold {
                     var loop by remember(loopId) { mutableStateOf<Loop?>(null) }
+                    val haptics = LocalHapticFeedback.current
                     LaunchedEffect(loopId) {
                         repository.observe(loopId).collect {
                             // Resolved elsewhere (notification action, dashboard): nothing left to show.
@@ -75,7 +79,10 @@ class ExpiredActivity : ComponentActivity() {
                     loop?.let { current ->
                         ExpiredScreen(
                             loop = current,
-                            onClose = { lifecycleScope.launch { repository.close(current.id); finish() } },
+                            onClose = {
+                                haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                                lifecycleScope.launch { repository.close(current.id); finish() }
+                            },
                             onSnooze = { m -> lifecycleScope.launch { repository.snooze(current.id, m); finish() } },
                         )
                     }

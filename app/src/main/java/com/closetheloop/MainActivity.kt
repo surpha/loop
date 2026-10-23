@@ -9,7 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.material3.AppScaffold
-import androidx.wear.compose.material3.MaterialTheme
+import com.closetheloop.ui.LoopTheme
 import com.closetheloop.ui.MainScreen
 import com.closetheloop.ui.MainViewModel
 
@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) startVoice = intent.wantsVoice()
         setContent {
-            MaterialTheme {
+            LoopTheme {
                 AppScaffold {
                     MainScreen(
                         viewModel = viewModel(factory = MainViewModel.Factory),

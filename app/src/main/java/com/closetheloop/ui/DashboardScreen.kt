@@ -19,7 +19,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,6 +67,7 @@ fun DashboardScreen(
     var selected by remember { mutableStateOf<Loop?>(null) }
     var dialogLoop by remember { mutableStateOf<Loop?>(null) }
     val select: (Loop) -> Unit = { selected = it; dialogLoop = it }
+    val haptics = LocalHapticFeedback.current
 
     val listState = rememberScalingLazyListState()
     ScreenScaffold(
@@ -119,7 +122,11 @@ fun DashboardScreen(
         loop = dialogLoop,
         visible = selected != null,
         onDismiss = { selected = null },
-        onClose = { selected?.let(onClose); selected = null },
+        onClose = {
+            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+            selected?.let(onClose)
+            selected = null
+        },
         onEditVoice = { selected?.let(onEditVoice); selected = null },
         onEditType = { selected?.let(onEditType); selected = null },
         onDelete = { selected?.let(onDelete); selected = null },

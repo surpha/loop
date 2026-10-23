@@ -86,6 +86,9 @@ stateDiagram-v2
 Long-term loops (no deadline) stay ACTIVE until closed/deleted; they never get an alarm. Only loops still counting down get a bezel ring; expired loops show "Time's up" in the hero but no ring.
 
 ## Dashboard layout
+- `LoopTheme` (wear M3 `ColorScheme` with loop-green primary) wraps `MainActivity` and `ExpiredActivity`.
+- No ambient/AOD mode by choice: when the screen dims the system returns to the watch face.
+- Haptics: `HapticFeedbackType.Confirm` on Close Loop (dashboard dialog and Time's-up screen).
 - `ScalingLazyColumn` centered on the hero (item 0); rings are drawn on top as a fixed overlay so the "loop" stays on the bezel while scrolling.
 - Content is inset by `ringsInset(n)`; TimeText and the scroll indicator are hidden while rings are visible.
 - UI clock ticks every 1s only while the activity is RESUMED (`repeatOnLifecycle`).
