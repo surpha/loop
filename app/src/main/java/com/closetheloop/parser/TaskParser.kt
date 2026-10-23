@@ -57,19 +57,27 @@ object TaskParser {
         "jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?"
     private const val DATE_PREP = """(?:(?:on|by|before|until|till|due)\s+)"""
     private const val ORD = "(?:st|nd|rd|th)"
+    private val WEEKDAYS = listOf("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
+    // "Friday 17th October": the weekday is redundant next to an explicit date.
+    private val WEEKDAY_PREFIX = """(?:(?:${WEEKDAYS.joinToString("|")}),?\s+)?"""
 
     // "17th October", "the 3rd of Nov 2027". Groups: 1 day, 2 month, 3 year.
     private val DATE_DAY_MONTH = Regex(
-        """\b$DATE_PREP?(?:the\s+)?(\d{1,2})$ORD?(?:\s+of)?\s+($MONTH)\b(?:,?\s+(\d{4}))?""",
+        """\b$DATE_PREP?$WEEKDAY_PREFIX(?:the\s+)?(\d{1,2})$ORD?(?:\s+of)?\s+($MONTH)\b(?:,?\s+(\d{4}))?""",
         IC,
     )
     // "October 17", "Oct 17th, 2027". Groups: 1 month, 2 day, 3 year.
     private val DATE_MONTH_DAY = Regex(
-        """\b$DATE_PREP?($MONTH)\s+(?:the\s+)?(\d{1,2})$ORD?\b(?:,?\s+(\d{4}))?""",
+        """\b$DATE_PREP?$WEEKDAY_PREFIX($MONTH)\s+(?:the\s+)?(\d{1,2})$ORD?\b(?:,?\s+(\d{4}))?""",
         IC,
     )
     // "by the 25th": next occurrence of that day of month. Group 1 day.
     private val DATE_ORDINAL = Regex("""\b$DATE_PREP(?:the\s+)(\d{1,2})$ORD\b""", IC)
+    // "on Friday", "next Monday", "this Saturday". Groups: 1 this/next/coming, 2 weekday.
+    private val DATE_WEEKDAY = Regex(
+        """\b$DATE_PREP?(?:(this|next|coming)\s+)?(${WEEKDAYS.joinToString("|")})\b""",
+        IC,
+    )
 
     /** [roll] is added when the resolved time is already past (null = explicit year, never roll). */
     private data class DateMatch(val date: LocalDate, val range: IntRange, val roll: Period?)
@@ -199,6 +207,12 @@ object TaskParser {
                 val date = ym.atDay(day)
                 if (!date.isBefore(today)) return DateMatch(date, m.range, Period.ofMonths(1))
             }
+        }
+        DATE_WEEKDAY.find(text)?.let { m ->
+            val (modifier, weekday) = m.destructured
+            var days = Math.floorMod(WEEKDAYS.indexOf(weekday.lowercase()) - (today.dayOfWeek.value - 1), 7)
+            if (days == 0 && modifier.equals("next", ignoreCase = true)) days = 7
+            return DateMatch(today.plusDays(days.toLong()), m.range, Period.ofWeeks(1))
         }
         return null
     }

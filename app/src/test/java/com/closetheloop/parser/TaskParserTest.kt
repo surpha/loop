@@ -81,6 +81,18 @@ class TaskParserTest {
     @Test fun invalidDateIgnored() = assertParsed("Party on 31 November", "Party on 31 November", null)
     @Test fun mayAsVerbIsNotADate() = assertParsed("I may call him", "I may call him", null)
 
+    // Weekdays (now = Friday 16 Oct, 10:00)
+    @Test fun weekdayWithTime() = assertParsed("Gym on Monday at 7", "Gym", at(2026, 10, 19, 7, 0))
+    @Test fun nextWeekdayNoTime() = assertParsed("Call dad next Monday", "Call dad", at(2026, 10, 19, 9, 0))
+    @Test fun byWeekdayPm() = assertParsed("Submit report by Wednesday 5pm", "Submit report", at(2026, 10, 21, 17, 0))
+    @Test fun todayWeekdayLaterTime() = assertParsed("Team lunch Friday at 1", "Team lunch", at(2026, 10, 16, 13, 0))
+    @Test fun todayWeekdayPassedTimeRollsAWeek() =
+        assertParsed("Standup Friday at 9am", "Standup", at(2026, 10, 23, 9, 0))
+    @Test fun nextSameWeekdayIsNextWeek() = assertParsed("Plan trip next Friday", "Plan trip", at(2026, 10, 23, 9, 0))
+    @Test fun thisWeekday() = assertParsed("Dinner this Saturday 8pm", "Dinner", at(2026, 10, 17, 20, 0))
+    @Test fun weekdayBeforeDateIsDropped() =
+        assertParsed("Flights on Friday 23rd October at 6pm", "Flights", at(2026, 10, 23, 18, 0))
+
     // No time → long-term
     @Test fun noTime() = assertParsed("Buy milk", "Buy milk", null)
     @Test fun noFalsePositiveOnIn() = assertParsed("Join a meeting", "Join a meeting", null)
