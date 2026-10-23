@@ -14,7 +14,10 @@ class TimeFormatTest {
     @Test
     fun remaining() {
         assertEquals("Now", TimeFormat.remaining(0))
-        assertEquals("1m", TimeFormat.remaining(1))
+        assertEquals("1s", TimeFormat.remaining(1))
+        assertEquals("45s", TimeFormat.remaining(45_000))
+        assertEquals("1m", TimeFormat.remaining(60_000))
+        assertEquals("2m", TimeFormat.remaining(60_001))
         assertEquals("45m", TimeFormat.remaining(45 * 60_000L))
         assertEquals("2h", TimeFormat.remaining(120 * 60_000L))
         assertEquals("2h 30m", TimeFormat.remaining(150 * 60_000L))

@@ -35,6 +35,17 @@ class TaskParserTest {
     @Test fun wordNumbers() = assertParsed("Write essay in twenty five minutes", "Write essay", minutes(25))
     @Test fun anHour() = assertParsed("Call back in an hour", "Call back", minutes(60))
 
+    // Trailing durations (no "in"/"for") and seconds
+    @Test fun trailingHrs() = assertParsed("Study 4 hrs", "Study", minutes(240))
+    @Test fun trailingHoursAndMinutes() = assertParsed("Nap 1 hr 30 mins", "Nap", minutes(90))
+    @Test fun trailingWordNumber() = assertParsed("Deep work two hours", "Deep work", minutes(120))
+    @Test fun trailingWithPunctuation() = assertParsed("Stretch 10 minutes.", "Stretch", minutes(10))
+    @Test fun trailingSeconds() = assertParsed("Plank 90 seconds", "Plank", now + 90_000)
+    @Test fun inMinutesAndSeconds() = assertParsed("Tea in 3 minutes 30 seconds", "Tea", now + 210_000)
+    @Test fun forSecs() = assertParsed("Hold breath for 45 secs", "Hold breath", now + 45_000)
+    @Test fun bareLetterUnitNotTrailing() = assertParsed("Buy 2 m cable", "Buy 2 m cable", null)
+    @Test fun midSentenceNumberIsNotDuration() = assertParsed("Read 2 hours worth of notes", "Read 2 hours worth of notes", null)
+
     // Absolute
     @Test fun byPm() = assertParsed("Call mom by 6 PM", "Call mom", at(2026, 10, 16, 18, 0))
     @Test fun atPmNoSpace() = assertParsed("Call mom at 6pm", "Call mom", at(2026, 10, 16, 18, 0))

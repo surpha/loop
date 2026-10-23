@@ -7,6 +7,7 @@ import java.time.Period
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import kotlin.math.roundToLong
 
 data class ParsedTask(val title: String, val deadline: Long?)
 
@@ -20,19 +21,25 @@ object TaskParser {
 
     private val NUM = "(?:(?:${TENS.joinToString("|")})(?:[- ](?:${UNITS.subList(1, 10).joinToString("|")}))?" +
         "|${UNITS.reversed().joinToString("|")}|\\d+(?:\\.\\d+)?|an?)"
-    private const val HOURS = """(?:hours?|hrs?|h)\b"""
-    private const val MINS = """(?:minutes?|mins?|m)\b"""
+    private const val UNIT_ANY = "hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s"
+    private const val UNIT_WORDS = "hours?|hrs?|minutes?|mins?|seconds?|secs?"
     private const val DAY = "(tomorrow|today|tonight)"
     private val HOUR_NUM = "(\\d{1,2}|${UNITS.subList(1, 13).reversed().joinToString("|")})"
     private val HOUR = "(\\d{1,2}|noon|midnight|${UNITS.subList(1, 13).reversed().joinToString("|")})"
     private const val AMPM = """(a\.?\s?m\.?|p\.?\s?m\.?)"""
     private val IC = RegexOption.IGNORE_CASE
 
-    // Groups: 1 half-hour, 2 hours, 3 "and a half" (before unit), 4 "and a half" (after unit), 5 extra minutes, 6 minutes only.
-    private val RELATIVE = Regex(
-        """\b(?:in|for|within|after)\s+(?:(half\s+an?\s+hour)\b|($NUM)\s*(and\s+a\s+half\s+)?$HOURS(\s+and\s+a\s+half\b)?(?:\s*,?\s*(?:and\s+)?($NUM)\s*$MINS)?|($NUM)\s*$MINS)""",
-        IC,
-    )
+    /** "an hour and a half", "1 hr 30 mins", "3 minutes 30 seconds", "half an hour". */
+    private fun durationPattern(units: String): String {
+        val part = """$NUM\s*(?:and\s+a\s+half\s+)?(?:$units)\b(?:\s+and\s+a\s+half\b)?"""
+        return """(?:half\s+an?\s+hour\b|$part(?:\s*,?\s*(?:and\s+)?$part)*)"""
+    }
+
+    private val RELATIVE = Regex("""\b(?:in|for|within|after)\s+(${durationPattern(UNIT_ANY)})""", IC)
+    // A duration closing the sentence with no preposition ("Study 4 hrs"); full unit words only.
+    private val TRAILING = Regex("""\b(${durationPattern(UNIT_WORDS)})\s*[.!?]?\s*$""", IC)
+    // Groups: 1 number, 2 "and a half" before unit, 3 unit, 4 "and a half" after unit.
+    private val DURATION_PART = Regex("""($NUM)\s*(and\s+a\s+half\s+)?($UNIT_ANY)\b(\s+and\s+a\s+half\b)?""", IC)
 
     // Groups: 1 day before, 2 hour, 3 minute, 4 am/pm, 5 day after.
     private val ABSOLUTE = Regex(
@@ -77,10 +84,9 @@ object TaskParser {
     fun parse(text: String, now: Long, zone: ZoneId): ParsedTask {
         val nowZ = Instant.ofEpochMilli(now).atZone(zone)
 
-        RELATIVE.find(text)?.let { m ->
-            val minutes = relativeMinutes(m)
-            if (minutes != null && minutes > 0) {
-                return ParsedTask(title(text, m.range), now + (minutes * 60_000).toLong())
+        for (regex in listOf(RELATIVE, TRAILING)) {
+            regex.find(text)?.let { m ->
+                durationMs(m.groupValues[1])?.let { return ParsedTask(title(text, m.range), now + it) }
             }
         }
         findDate(text, nowZ.toLocalDate())?.let { d ->
@@ -107,16 +113,19 @@ object TaskParser {
         return ParsedTask(title(text, null), null)
     }
 
-    private fun relativeMinutes(m: MatchResult): Double? {
-        val g = m.groupValues
-        if (g[1].isNotEmpty()) return 30.0
-        if (g[2].isNotEmpty()) {
-            var total = (number(g[2]) ?: return null) * 60
-            if (g[3].isNotEmpty() || g[4].isNotEmpty()) total += 30
-            if (g[5].isNotEmpty()) total += number(g[5]) ?: return null
-            return total
+    private fun durationMs(duration: String): Long? {
+        if (duration.trimStart().startsWith("half", ignoreCase = true)) return 30 * 60_000L
+        var seconds = 0.0
+        for (part in DURATION_PART.findAll(duration)) {
+            val (num, halfBefore, unit, halfAfter) = part.destructured
+            val n = (number(num) ?: return null) + if (halfBefore.isNotEmpty() || halfAfter.isNotEmpty()) 0.5 else 0.0
+            seconds += n * when (unit.lowercase().first()) {
+                'h' -> 3600
+                'm' -> 60
+                else -> 1
+            }
         }
-        return number(g[6])
+        return (seconds * 1000).roundToLong().takeIf { it > 0 }
     }
 
     private fun resolveClock(m: MatchResult, now: ZonedDateTime): ZonedDateTime? {

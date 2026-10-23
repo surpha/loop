@@ -6,9 +6,10 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object TimeFormat {
-    /** "45m", "2h 30m", "1d 3h"; rounds up so a running timer never shows 0m early. */
+    /** "45s", "45m", "2h 30m", "1d 3h"; rounds up so a running timer never shows 0 early. */
     fun remaining(ms: Long): String {
         if (ms <= 0) return "Now"
+        if (ms < 60_000) return "${(ms + 999) / 1000}s"
         val totalMin = (ms + 59_999) / 60_000
         val d = totalMin / 1440
         val h = totalMin % 1440 / 60
