@@ -93,6 +93,13 @@ progress    = (deadline - now) / (deadline - windowStart)   // 1 → 0
 - `applyRemote(remote)`: last-write-wins on `updatedAt`; remote tombstone deletes the row; keeps a local EXPIRED status when only non-timing fields changed; re-arms or cancels alarms (cancel also dismisses a Time's-up alert) when deadline/status changed.
 - Stage B (Firestore transport) and C/D (auth on phone → watch) build on this.
 
+## Sync transport (stages B–D)
+- `LoopSync` (`:shared/sync`) runs in each app's Application scope. On Firebase sign-in it listens to `users/{uid}/loops` (snapshot listener → `applyRemote`, skipping per-document pending writes) and uploads `observePendingUploads()` with `set(doc)` → `markUploaded`. Stops on sign-out. Rules: [firestore.rules](firestore.rules) (owner-only).
+- **Phone sign-in:** `GoogleAccount` (Credential Manager `GetSignInWithGoogleOption` → Google ID token → `FirebaseAuth.signInWithCredential`). Account sheet shows status, *Connect watch*, Sign out.
+- **Watch sign-in handoff:** phone `WatchBridge` puts the ID token on the Wear Data Layer at `/closetheloop/auth` (urgent). Watch `AuthListenerService` (`DATA_CHANGED`, `wear://*/closetheloop`) signs into Firebase as the same user, then deletes the data item. Sign-out is propagated the same way. Needs the phone↔watch Bluetooth link (items queue until connected). ID tokens expire in ~1 h, so *Connect watch* sends a fresh one.
+- **Known limit:** Android 16 / Wear OS 6 block network for backgrounded apps (`blocked=APP_BACKGROUND`), so each device syncs while its app is open (queued changes flush then). Background sync is a follow-up.
+- Verified 2026-10-24: phone and watch DBs identical (36 loops, none dirty) after handoff.
+
 ## Loop lifecycle
 ```mermaid
 stateDiagram-v2
