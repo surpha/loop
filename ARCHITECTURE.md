@@ -74,13 +74,24 @@ Loop(
   deadline: Long?           // null = long-term to-do
   originalDurationMs: Long?,
   status: ACTIVE | EXPIRED | CLOSED,
-  snoozeCount, lastSnoozedAt: Long?, closedAt: Long?
+  snoozeCount, lastSnoozedAt: Long?, closedAt: Long?,
+  syncId: String (UUID, unique)  // shared across devices; `id` is device-local
+  updatedAt: Long                // last user change, last-write-wins
+  deleted: Boolean               // tombstone until the deletion is uploaded
+  dirty: Boolean                 // changed locally, not yet uploaded
 )
 windowStart = lastSnoozedAt ?: createdAt
 progress    = (deadline - now) / (deadline - windowStart)   // 1 → 0
 ```
-- "Open" = status ≠ CLOSED. Sorted: deadline ASC, then long-term newest-first.
-- Enums are stored as their names (Room default). DB version 1, no migrations yet (`exportSchema = false`).
+- "Open" = status ≠ CLOSED and not deleted. Sorted: deadline ASC, then long-term newest-first.
+- Enums are stored as their names (Room default). DB **version 2**; `MIGRATION_1_2` adds the sync columns (existing rows get a random syncId, `updatedAt = closedAt ?: lastSnoozedAt ?: createdAt`, and are dirty so they upload on first sync). Tested in `LoopMigrationTest`.
+
+## Sync model (stage A: local side)
+- Every user change (add/close/snooze/reopen/edit/delete) bumps `updatedAt` and sets `dirty`. `delete` writes a tombstone.
+- `markExpired` is alarm-driven and derivable on any device, so it stays local (no `updatedAt`, not dirty).
+- `pendingUploads()` / `observePendingUploads()` → `RemoteLoop`s to push; `markUploaded(remote)` clears dirty only if no newer local edit happened (`WHERE updatedAt = :uploaded`) and purges uploaded tombstones.
+- `applyRemote(remote)`: last-write-wins on `updatedAt`; remote tombstone deletes the row; keeps a local EXPIRED status when only non-timing fields changed; re-arms or cancels alarms (cancel also dismisses a Time's-up alert) when deadline/status changed.
+- Stage B (Firestore transport) and C/D (auth on phone → watch) build on this.
 
 ## Loop lifecycle
 ```mermaid
