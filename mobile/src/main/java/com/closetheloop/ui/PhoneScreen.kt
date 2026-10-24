@@ -91,6 +91,9 @@ import com.closetheloop.domain.QuickTime
 import com.closetheloop.domain.Urgency
 import com.closetheloop.mobile.R
 import com.closetheloop.parser.TaskParser
+import com.closetheloop.sync.GoogleAccount
+import com.closetheloop.sync.LoopSync
+import com.closetheloop.sync.WatchBridge
 import com.closetheloop.voice.VoiceCapture
 import java.time.Instant
 import java.time.ZoneId
@@ -105,11 +108,16 @@ private enum class VoiceTarget { SAVE, COMPOSER }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PhoneScreen(viewModel: MainViewModel) {
+fun PhoneScreen(viewModel: MainViewModel, sync: LoopSync) {
     val context = LocalContext.current
     val loops by viewModel.openLoops.collectAsStateWithLifecycle()
     val saved by viewModel.saved.collectAsStateWithLifecycle()
     val closedToday by viewModel.closedToday.collectAsStateWithLifecycle()
+    val closedTodayLoops by viewModel.closedTodayLoops.collectAsStateWithLifecycle()
+    val syncState by sync.state.collectAsStateWithLifecycle()
+    var showAccount by remember { mutableStateOf(false) }
+    var showClosed by remember { mutableStateOf(false) }
+    var signingIn by remember { mutableStateOf(false) }
     val voice = remember { VoiceCapture(context) }
     DisposableEffect(voice) { onDispose { voice.destroy() } }
     val voiceState by voice.state.collectAsStateWithLifecycle()
@@ -209,7 +217,7 @@ fun PhoneScreen(viewModel: MainViewModel) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
         ) {
-            item { Header(now, zone, closedToday) }
+            item { Header(now, zone, closedToday, syncState, onClosedClick = { showClosed = true }, onAccountClick = { showAccount = true }) }
             item { RingsHero(loops, shortTerm.firstOrNull(), now, is24h, onSelect = { selected = it }) }
             if (loops.isEmpty()) {
                 item { EmptyState(onExample = openComposer) }
@@ -284,6 +292,47 @@ fun PhoneScreen(viewModel: MainViewModel) {
             },
         )
     }
+
+    if (showAccount) {
+        AccountSheet(
+            state = syncState,
+            busy = signingIn,
+            onSignIn = {
+                scope.launch {
+                    signingIn = true
+                    val result = GoogleAccount.signIn(context)
+                    signingIn = false
+                    if (result is GoogleAccount.Result.Failed) snackbar.showSnackbar("Sign-in failed: ${result.message}")
+                }
+            },
+            onSignOut = { scope.launch { GoogleAccount.signOut(context) } },
+            onConnectWatch = {
+                scope.launch {
+                    signingIn = true
+                    val watch = WatchBridge.connectedWatchName(context)
+                    val result = GoogleAccount.connectWatch(context)
+                    signingIn = false
+                    snackbar.showSnackbar(
+                        when {
+                            result is GoogleAccount.Result.Failed -> "Couldn't connect watch: ${result.message}"
+                            result is GoogleAccount.Result.Cancelled -> "Cancelled"
+                            watch == null -> "Sent; it'll reach the watch when it reconnects"
+                            else -> "Signed in on $watch"
+                        }
+                    )
+                }
+            },
+            onDismiss = { showAccount = false },
+        )
+    }
+
+    if (showClosed) {
+        ClosedTodaySheet(
+            loops = closedTodayLoops,
+            onReopen = { viewModel.reopen(it.id) },
+            onDismiss = { showClosed = false },
+        )
+    }
 }
 
 private fun LazyListScope.section(
@@ -304,9 +353,17 @@ private fun LazyListScope.section(
 }
 
 @Composable
-private fun Header(now: Long, zone: ZoneId, closedToday: Int) {
+private fun Header(
+    now: Long,
+    zone: ZoneId,
+    closedToday: Int,
+    syncState: LoopSync.State,
+    onClosedClick: () -> Unit,
+    onAccountClick: () -> Unit,
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 12.dp),
     ) {
         Column(Modifier.weight(1f)) {
@@ -318,15 +375,16 @@ private fun Header(now: Long, zone: ZoneId, closedToday: Int) {
             )
         }
         if (closedToday > 0) {
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+            Surface(onClick = onClosedClick, shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
                 Text(
-                    "✓ $closedToday closed today",
+                    "✓ $closedToday closed",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                 )
             }
         }
+        AccountButton(syncState, onClick = onAccountClick)
     }
 }
 

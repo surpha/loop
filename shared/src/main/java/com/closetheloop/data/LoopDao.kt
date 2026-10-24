@@ -29,6 +29,9 @@ interface LoopDao {
     @Query("SELECT COUNT(*) FROM loops WHERE status = 'CLOSED' AND deleted = 0 AND closedAt >= :since")
     fun observeClosedSince(since: Long): Flow<Int>
 
+    @Query("SELECT * FROM loops WHERE status = 'CLOSED' AND deleted = 0 AND closedAt >= :since ORDER BY closedAt DESC")
+    fun observeClosedListSince(since: Long): Flow<List<Loop>>
+
     @Insert
     suspend fun insert(loop: Loop): Long
 

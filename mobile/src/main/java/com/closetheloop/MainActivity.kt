@@ -15,7 +15,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PhoneTheme {
-                PhoneScreen(viewModel(factory = MainViewModel.Factory))
+                PhoneScreen(viewModel(factory = MainViewModel.Factory), (application as CloseTheLoopPhoneApp).sync)
             }
         }
     }

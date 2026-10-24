@@ -36,6 +36,8 @@ class MainViewModel(
         Instant.ofEpochMilli(clock()).atZone(zone()).toLocalDate().atStartOfDay(zone()).toInstant().toEpochMilli()
     val closedToday: StateFlow<Int> = repository.observeClosedSince(startOfToday)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    val closedTodayLoops: StateFlow<List<Loop>> = repository.observeClosedListSince(startOfToday)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Add with an already-resolved deadline (e.g. a quick-time chip on the phone). */
     fun add(title: String, deadline: Long?) {

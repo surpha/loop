@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
+import com.closetheloop.sync.LoopSync
 
 class AppContainer(context: Context) {
     private val database = LoopDatabase.create(context)
@@ -32,9 +33,12 @@ class CloseTheLoopApp : Application(), LoopApp {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    val sync: LoopSync by lazy { LoopSync(container.repository, appScope) }
+
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        sync.start()
         // Keep glanceable surfaces in sync with any loop change (UI, alarms, notification actions).
         appScope.launch {
             container.repository.observeOpen().drop(1).collect { LoopTileService.requestUpdate(this@CloseTheLoopApp) }

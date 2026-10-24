@@ -15,6 +15,8 @@ class LoopRepository(
 
     fun observeClosedSince(since: Long): Flow<Int> = dao.observeClosedSince(since)
 
+    fun observeClosedListSince(since: Long): Flow<List<Loop>> = dao.observeClosedListSince(since)
+
     suspend fun openWithDeadline(): List<Loop> = dao.getOpenWithDeadline()
 
     suspend fun get(id: Long): Loop? = dao.getById(id)

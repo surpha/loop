@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -54,5 +55,9 @@ dependencies {
     implementation(libs.wear.protolayout)
     implementation(libs.androidx.concurrent.futures)
     implementation(libs.wear.input)
+    // Tiles return ListenableFuture; Firebase swaps the standalone artifact for full Guava at runtime only.
+    implementation(libs.guava)
+    implementation(libs.play.services.wearable)
+    implementation(libs.kotlinx.coroutines.play.services)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

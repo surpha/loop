@@ -8,6 +8,7 @@ import com.closetheloop.data.LoopDatabase
 import com.closetheloop.data.LoopRepository
 import com.closetheloop.data.LoopScheduler
 import com.closetheloop.notify.LiveCountdownNotifier
+import com.closetheloop.sync.LoopSync
 import com.closetheloop.ui.PhoneExpiredActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,8 +24,11 @@ class CloseTheLoopPhoneApp : Application(), LoopApp {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    val sync: LoopSync by lazy { LoopSync(repository, appScope) }
+
     override fun onCreate() {
         super.onCreate()
+        sync.start()
         // Refresh the pinned countdown on any loop change and once a minute (progress bar; the chronometer ticks itself).
         val minuteTicks = flow {
             while (true) {
